@@ -162,7 +162,7 @@ public class Eth2Runner extends Runner {
     addReloadHandler(routerFactory, blsSignerProvider, RELOAD.name(), errorHandler);
 
     if (isKeyManagerApiEnabled) {
-      // TODO Implement KeyManager API handlers
+      // TODO enable key manager api
     }
   }
 
