@@ -10,6 +10,8 @@ import io.vertx.ext.web.api.RequestParameters;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.List;
+
 public class ImportKeystoresHandler implements Handler<RoutingContext> {
 
     private static final Logger LOG = LogManager.getLogger();
@@ -50,34 +52,4 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
         routingContext.fail(BAD_REQUEST);
     }
 
-    class ImportKeystoresRequestBody {
-        private final String[] keystores;
-        private final String[] passwords;
-        private final String slashingProtection;
-
-        @JsonCreator
-        ImportKeystoresRequestBody(
-                @JsonProperty("keystores") final String[] keystores,
-                @JsonProperty("passwords") final String[] passwords,
-                @JsonProperty("slashing_protection") final String slashingProtection) {
-            this.keystores = keystores;
-            this.passwords = passwords;
-            this.slashingProtection = slashingProtection;
-        }
-
-        @JsonProperty("keystores")
-        public String[] getKeystores() {
-            return keystores;
-        }
-
-        @JsonProperty("passwords")
-        public String[] getPasswords() {
-            return passwords;
-        }
-
-        @JsonProperty("slashing_protection")
-        public String getSlashingProtection() {
-            return slashingProtection;
-        }
-    }
 }
