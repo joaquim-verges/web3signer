@@ -19,6 +19,7 @@ public class ListKeystoresHandler implements Handler<RoutingContext> {
 
     @Override
     public void handle(final RoutingContext context) {
+        // TODO include derivation path when available (requires some plumbing)
         final List<KeystoreInfo> data = artifactSignerProvider.availableIdentifiers()
                 .stream()
                 .map(key -> new KeystoreInfo(key, null, false))

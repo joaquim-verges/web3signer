@@ -198,6 +198,8 @@ public class Eth2Runner extends Runner {
             signers.addAll(loadAzureSigners());
           }
 
+          // TODO add keys imported via API
+
           final List<Bytes> validators =
               signers.stream()
                   .map(ArtifactSigner::getIdentifier)
