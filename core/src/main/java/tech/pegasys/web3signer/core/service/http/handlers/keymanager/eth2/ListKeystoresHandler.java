@@ -1,7 +1,5 @@
 package tech.pegasys.web3signer.core.service.http.handlers.keymanager.eth2;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.web.RoutingContext;

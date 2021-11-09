@@ -1,7 +1,5 @@
 package tech.pegasys.web3signer.core.service.http.handlers.keymanager.eth2;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Handler;
@@ -9,8 +7,6 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.api.RequestParameters;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.util.List;
 
 public class ImportKeystoresHandler implements Handler<RoutingContext> {
 
@@ -38,7 +34,6 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
         // TODO import parsedBody.slashingProtection
 
         // TODO respond with success
-        // {[{status: imported/duplicate/error, message: ""}]}
     }
 
     private ImportKeystoresRequestBody parseRequestBody(final RequestParameters params)
