@@ -30,6 +30,7 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
             return;
         }
         // TODO respond with array of DeleteKeystoreResult
+        parsedBody.getPubkeys();
     }
 
     private DeleteKeystoresRequestBody parseRequestBody(final RequestParameters params)

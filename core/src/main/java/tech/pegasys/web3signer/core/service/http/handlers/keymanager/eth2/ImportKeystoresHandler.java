@@ -8,6 +8,8 @@ import io.vertx.ext.web.api.RequestParameters;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.List;
+
 public class ImportKeystoresHandler implements Handler<RoutingContext> {
 
     private static final Logger LOG = LogManager.getLogger();
@@ -32,6 +34,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
 
 
         // TODO decode parsedBody.keystores
+        parsedBody.getKeystores();
         // TODO import parsedBody.slashingProtection
 
         // TODO respond with success

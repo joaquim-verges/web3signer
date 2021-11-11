@@ -6,6 +6,7 @@ import io.vertx.ext.web.RoutingContext;
 import tech.pegasys.web3signer.core.signing.ArtifactSignerProvider;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
 import static tech.pegasys.web3signer.core.service.http.handlers.ContentTypes.JSON_UTF_8;
@@ -23,7 +24,7 @@ public class ListKeystoresHandler implements Handler<RoutingContext> {
         final List<KeystoreInfo> data = artifactSignerProvider.availableIdentifiers()
                 .stream()
                 .map(key -> new KeystoreInfo(key, null, false))
-                .toList();
+                .collect(Collectors.toList());
         final String jsonEncodedKeys = new JsonArray(data).encode();
         context.response().putHeader(CONTENT_TYPE, JSON_UTF_8).end(jsonEncodedKeys);
     }
