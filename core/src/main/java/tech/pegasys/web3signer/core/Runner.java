@@ -120,9 +120,9 @@ public abstract class Runner implements Runnable {
           getOpenAPI3RouterFactory(vertx, openApiSpec.toString());
 
       routerFactory.addSecurityHandler("bearerAuth", context -> {
-        // TODO JWT security logic
-        final boolean isAuth = true;
-        if (isAuth) {
+        // TODO JWT/API token security logic
+        final boolean autorized = true;
+        if (autorized) {
           context.next();
         } else {
           context.response()
