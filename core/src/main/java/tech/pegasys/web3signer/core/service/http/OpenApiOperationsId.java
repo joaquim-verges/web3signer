@@ -20,4 +20,7 @@ public enum OpenApiOperationsId {
   ETH1_LIST,
   RELOAD,
   UPCHECK,
+  KEYMANAGER_LIST,
+  KEYMANAGER_IMPORT,
+  KEYMANAGER_DELETE,
 }

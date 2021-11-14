@@ -15,6 +15,9 @@ package tech.pegasys.web3signer.core;
 import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.ETH2_LIST;
 import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.ETH2_SIGN;
 import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.RELOAD;
+import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.KEYMANAGER_LIST;
+import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.KEYMANAGER_IMPORT;
+import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.KEYMANAGER_DELETE;
 import static tech.pegasys.web3signer.core.signing.KeyType.BLS;
 
 import tech.pegasys.signers.azure.AzureKeyVault;
@@ -35,6 +38,9 @@ import tech.pegasys.web3signer.core.multikey.metadata.parser.YamlSignerParser;
 import tech.pegasys.web3signer.core.multikey.metadata.yubihsm.YubiHsmOpaqueDataProvider;
 import tech.pegasys.web3signer.core.service.http.SigningObjectMapperFactory;
 import tech.pegasys.web3signer.core.service.http.handlers.LogErrorHandler;
+import tech.pegasys.web3signer.core.service.http.handlers.keymanager.eth2.DeleteKeystoresHandler;
+import tech.pegasys.web3signer.core.service.http.handlers.keymanager.eth2.ImportKeystoresHandler;
+import tech.pegasys.web3signer.core.service.http.handlers.keymanager.eth2.ListKeystoresHandler;
 import tech.pegasys.web3signer.core.service.http.handlers.signing.SignerForIdentifier;
 import tech.pegasys.web3signer.core.service.http.handlers.signing.eth2.Eth2SignForIdentifierHandler;
 import tech.pegasys.web3signer.core.service.http.metrics.HttpApiMetrics;
@@ -162,7 +168,27 @@ public class Eth2Runner extends Runner {
     addReloadHandler(routerFactory, blsSignerProvider, RELOAD.name(), errorHandler);
 
     if (isKeyManagerApiEnabled) {
-      // TODO enable key manager api
+      // TODO custom objectMapper? should be ok to re-use the signing one
+      routerFactory.addHandlerByOperationId(
+          KEYMANAGER_LIST.name(),
+          new BlockingHandlerDecorator(
+              new ListKeystoresHandler(blsSignerProvider),
+              false
+          ));
+
+      routerFactory.addHandlerByOperationId(
+          KEYMANAGER_IMPORT.name(),
+          new BlockingHandlerDecorator(
+              new ImportKeystoresHandler(objectMapper),
+              false
+          ));
+
+      routerFactory.addHandlerByOperationId(
+          KEYMANAGER_DELETE.name(),
+          new BlockingHandlerDecorator(
+              new DeleteKeystoresHandler(objectMapper),
+              false
+          ));
     }
   }
 
@@ -176,8 +202,8 @@ public class Eth2Runner extends Runner {
               new HashicorpConnectionFactory(vertx);
 
           try (final InterlockKeyProvider interlockKeyProvider = new InterlockKeyProvider(vertx);
-              final YubiHsmOpaqueDataProvider yubiHsmOpaqueDataProvider =
-                  new YubiHsmOpaqueDataProvider()) {
+               final YubiHsmOpaqueDataProvider yubiHsmOpaqueDataProvider =
+                   new YubiHsmOpaqueDataProvider()) {
             final AbstractArtifactSignerFactory artifactSignerFactory =
                 new BlsArtifactSignerFactory(
                     config.getKeyConfigPath(),
@@ -198,7 +224,7 @@ public class Eth2Runner extends Runner {
             signers.addAll(loadAzureSigners());
           }
 
-          // TODO add keys imported via API
+          // TODO add keys imported via API (not needed if added to yaml config folder in the correct format)
 
           final List<Bytes> validators =
               signers.stream()
