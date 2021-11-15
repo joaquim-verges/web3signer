@@ -1,14 +1,15 @@
 package tech.pegasys.web3signer.tests.keymanager;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.Test;
+import tech.pegasys.web3signer.core.service.http.handlers.keymanager.eth2.KeystoreInfo;
 
-import static org.hamcrest.CoreMatchers.everyItem;
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.containsInAnyOrder;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.collection.IsIn.in;
 
 public class ListKeysAcceptanceTest extends KeyManagerTestBase {
   private static final String BLS_PRIVATE_KEY_1 =
@@ -31,14 +32,15 @@ public class ListKeysAcceptanceTest extends KeyManagerTestBase {
   }
 
   @Test
-  public void onlyValidKeysAreReturnedInPublicKeyResponse() {
+  public void onlyValidKeysAreReturnedInPublicKeyResponse() throws JsonProcessingException {
     final String[] keys = createBlsKeys(true, PRIVATE_KEYS[0]);
-    final String[] invalidKeys = createBlsKeys(false, PRIVATE_KEYS[1]);
+    //final String[] invalidKeys = createBlsKeys(false, PRIVATE_KEYS[1]);
 
     setupSignerWithKeyManagerApi();
 
     final Response response = callListKeys();
-    validateApiResponse(response, contains(keys));
-    validateApiResponse(response, everyItem(not(in(invalidKeys))));
+    final List<KeystoreInfo> expectedResponse = new ArrayList<>();
+    expectedResponse.add(new KeystoreInfo(keys[0], null, false));
+    validateApiResponse(response, equalTo(toJson(expectedResponse)));
   }
 }

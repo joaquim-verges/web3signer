@@ -172,7 +172,7 @@ public class Eth2Runner extends Runner {
       routerFactory.addHandlerByOperationId(
           KEYMANAGER_LIST.name(),
           new BlockingHandlerDecorator(
-              new ListKeystoresHandler(blsSignerProvider),
+              new ListKeystoresHandler(blsSignerProvider, objectMapper),
               false
           ));
 
