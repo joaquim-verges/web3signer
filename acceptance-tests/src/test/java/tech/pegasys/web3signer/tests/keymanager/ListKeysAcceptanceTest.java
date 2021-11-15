@@ -1,5 +1,6 @@
 package tech.pegasys.web3signer.tests.keymanager;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.Test;
@@ -7,6 +8,8 @@ import tech.pegasys.web3signer.core.service.http.handlers.keymanager.eth2.Keysto
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.empty;
@@ -34,13 +37,12 @@ public class ListKeysAcceptanceTest extends KeyManagerTestBase {
   @Test
   public void onlyValidKeysAreReturnedInPublicKeyResponse() throws JsonProcessingException {
     final String[] keys = createBlsKeys(true, PRIVATE_KEYS[0]);
-    //final String[] invalidKeys = createBlsKeys(false, PRIVATE_KEYS[1]);
-
+    createBlsKeys(false, PRIVATE_KEYS[1]); // add invalid key
     setupSignerWithKeyManagerApi();
 
     final Response response = callListKeys();
     final List<KeystoreInfo> expectedResponse = new ArrayList<>();
     expectedResponse.add(new KeystoreInfo(keys[0], null, false));
-    validateApiResponse(response, equalTo(toJson(expectedResponse)));
+    assertApiResponse(response, expectedResponse);
   }
 }

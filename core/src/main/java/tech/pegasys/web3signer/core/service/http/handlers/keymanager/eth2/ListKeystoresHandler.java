@@ -1,5 +1,6 @@
 package tech.pegasys.web3signer.core.service.http.handlers.keymanager.eth2;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Handler;

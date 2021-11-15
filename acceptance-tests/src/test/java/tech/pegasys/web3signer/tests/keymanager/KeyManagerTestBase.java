@@ -1,5 +1,6 @@
 package tech.pegasys.web3signer.tests.keymanager;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.http.ContentType;
@@ -21,6 +22,7 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static tech.pegasys.web3signer.core.signing.KeyType.BLS;
 
 public class KeyManagerTestBase extends AcceptanceTestBase {
@@ -46,11 +48,16 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
   }
 
   protected String toJson(final Object object) throws JsonProcessingException {
+    objectMapper.setDefaultPropertyInclusion(JsonInclude.Include.ALWAYS); // For some reason this is set implicitely in code but not in tests?
     return objectMapper.writeValueAsString(object);
   }
 
   protected void validateApiResponse(final Response response, final Matcher<?> matcher) {
     response.then().statusCode(200).contentType(ContentType.JSON).body("", matcher);
+  }
+
+  protected void assertApiResponse(final Response response, final Object expectedResponse) throws JsonProcessingException {
+    assertThat(response.asString()).isEqualTo(toJson(expectedResponse));
   }
 
   protected String[] createBlsKeys(boolean isValid, final String... privateKeys) {
