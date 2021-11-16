@@ -24,15 +24,15 @@ public class ListKeystoresHandler implements Handler<RoutingContext> {
 
   @Override
   public void handle(final RoutingContext context) {
+    // TODO should this only return BLS type keys?
     // TODO include derivation path when available (requires some plumbing to expose it from the artifactSignerProvider)
     final List<KeystoreInfo> data = artifactSignerProvider.availableIdentifiers()
         .stream()
         .map(key -> new KeystoreInfo(key, null, false))
         .collect(Collectors.toList());
-    final String jsonEncodedKeys;
+    final ListKeystoresResponse response = new ListKeystoresResponse(data);
     try {
-      jsonEncodedKeys = objectMapper.writeValueAsString(data);
-      context.response().putHeader(CONTENT_TYPE, JSON_UTF_8).end(jsonEncodedKeys);
+      context.response().putHeader(CONTENT_TYPE, JSON_UTF_8).end(objectMapper.writeValueAsString(response));
     } catch (JsonProcessingException e) {
       context.response().setStatusCode(500).end("{ message: \"JSON Parsing error\"}");
     }

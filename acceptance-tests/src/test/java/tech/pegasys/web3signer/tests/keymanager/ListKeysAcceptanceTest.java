@@ -3,13 +3,11 @@ package tech.pegasys.web3signer.tests.keymanager;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
-import tech.pegasys.web3signer.core.service.http.handlers.keymanager.eth2.KeystoreInfo;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasItems;
 
 public class ListKeysAcceptanceTest extends KeyManagerTestBase {
   private static final String BLS_PRIVATE_KEY_1 =
@@ -21,14 +19,14 @@ public class ListKeysAcceptanceTest extends KeyManagerTestBase {
   @Test
   public void noLoadedKeysReturnsEmptyPublicKeyResponse() {
     setupSignerWithKeyManagerApi();
-    validateApiResponse(callListKeys(), empty());
+    validateApiResponse(callListKeys(), "data", empty());
   }
 
   @Test
   public void invalidKeysReturnsEmptyPublicKeyResponse() {
     createBlsKeys(false, PRIVATE_KEYS);
     setupSignerWithKeyManagerApi();
-    validateApiResponse(callListKeys(), empty());
+    validateApiResponse(callListKeys(), "data", empty());
   }
 
   @Test
@@ -37,9 +35,11 @@ public class ListKeysAcceptanceTest extends KeyManagerTestBase {
     createBlsKeys(false, PRIVATE_KEYS[1]); // add invalid key
     setupSignerWithKeyManagerApi();
 
-    final List<KeystoreInfo> expectedResponse = new ArrayList<>();
-    expectedResponse.add(new KeystoreInfo(keys[0], null, false));
-    assertApiResponse(callListKeys(), expectedResponse);
+    validateApiResponse(
+        callListKeys(),
+        "data.validating_pubkey",
+        hasItem(keys[0])
+    );
   }
 
   @Test
@@ -48,17 +48,27 @@ public class ListKeysAcceptanceTest extends KeyManagerTestBase {
     final String firstPubKey = createBlsKeys(true, prvKeys[0])[0];
     setupSignerWithKeyManagerApi();
 
-    final List<KeystoreInfo> expectedResponse = new ArrayList<>();
-    expectedResponse.add(new KeystoreInfo(firstPubKey, null, false));
-    assertApiResponse(callListKeys(), expectedResponse);
+    validateApiResponse(
+        callListKeys(),
+        "data.validating_pubkey",
+        hasItem(firstPubKey)
+    );
 
     final String secondPubKey = createBlsKeys(true, prvKeys[1])[0];
     signer.callReload().then().statusCode(200);
 
-    expectedResponse.add(new KeystoreInfo(secondPubKey, null, false));
     // reload is async
     Awaitility.await()
         .atMost(5, SECONDS)
-        .untilAsserted(() -> assertApiResponse(callListKeys(), expectedResponse));
+        .untilAsserted(() ->
+            validateApiResponse(
+                callListKeys(),
+                "data.validating_pubkey",
+                hasItems(firstPubKey, secondPubKey)
+            )
+        );
   }
+
+  // TODO test keys after deletion
+
 }
