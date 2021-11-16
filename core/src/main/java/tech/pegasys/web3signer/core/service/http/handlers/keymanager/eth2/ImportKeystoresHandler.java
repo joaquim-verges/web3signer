@@ -37,7 +37,8 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
     parsedBody.getKeystores();
     // TODO import parsedBody.slashingProtection
 
-    // TODO respond with success
+    // TODO respond with 200 + ImportKeystoresResponse
+    context.response().setStatusCode(200).end("{ data: \"ok\" }");
   }
 
   private ImportKeystoresRequestBody parseRequestBody(final RequestParameters params)

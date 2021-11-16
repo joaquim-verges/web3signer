@@ -25,7 +25,8 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
   private static final Long MINIMAL_ALTAIR_FORK = 0L;
   protected static final MetadataFileHelpers metadataFileHelpers = new MetadataFileHelpers();
 
-  protected @TempDir Path testDirectory;
+  @TempDir
+  protected Path testDirectory;
 
   protected void setupSignerWithKeyManagerApi() {
     final SignerConfigurationBuilder builder = new SignerConfigurationBuilder();
@@ -39,6 +40,10 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
 
   public Response callListKeys() {
     return given().baseUri(signer.getUrl()).get(KEYSTORE_ENDPOINT);
+  }
+
+  public Response callImportKeystores(final String body) {
+    return given().baseUri(signer.getUrl()).contentType(ContentType.JSON).with().body(body).post(KEYSTORE_ENDPOINT);
   }
 
   protected void validateApiResponse(final Response response, final String path, final Matcher<?> matcher) {
