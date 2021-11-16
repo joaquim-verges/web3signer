@@ -1,6 +1,5 @@
 package tech.pegasys.web3signer.core.service.http.handlers.keymanager.eth2;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Handler;
@@ -25,7 +24,7 @@ public class ListKeystoresHandler implements Handler<RoutingContext> {
 
   @Override
   public void handle(final RoutingContext context) {
-    // TODO include derivation path when available (requires some plumbing)
+    // TODO include derivation path when available (requires some plumbing to expose it from the artifactSignerProvider)
     final List<KeystoreInfo> data = artifactSignerProvider.availableIdentifiers()
         .stream()
         .map(key -> new KeystoreInfo(key, null, false))
