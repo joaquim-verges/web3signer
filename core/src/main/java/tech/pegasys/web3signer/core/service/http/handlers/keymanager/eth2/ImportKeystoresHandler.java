@@ -9,9 +9,13 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.api.RequestParameters;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import tech.pegasys.web3signer.core.signing.ArtifactSignerProvider;
 import tech.pegasys.web3signer.core.signing.KeyType;
+import tech.pegasys.web3signer.slashingprotection.SlashingProtection;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -20,6 +24,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
+import static tech.pegasys.web3signer.core.service.http.handlers.ContentTypes.JSON_UTF_8;
 
 public class ImportKeystoresHandler implements Handler<RoutingContext> {
 
@@ -29,10 +38,17 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
 
   private final ObjectMapper objectMapper;
   private final Path keystorePath;
+  private final Optional<SlashingProtection> slashingProtection;
+  private final ArtifactSignerProvider artifactSignerProvider;
 
-  public ImportKeystoresHandler(final ObjectMapper objectMapper, final Path keystorePath) {
+  public ImportKeystoresHandler(final ObjectMapper objectMapper,
+                                final Path keystorePath,
+                                final Optional<SlashingProtection> slashingProtection,
+                                final ArtifactSignerProvider artifactSignerProvider) {
     this.objectMapper = objectMapper;
     this.keystorePath = keystorePath;
+    this.slashingProtection = slashingProtection;
+    this.artifactSignerProvider = artifactSignerProvider;
   }
 
   @Override
@@ -46,30 +62,52 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
       return;
     }
 
+    final Set<String> existingPubkeys = artifactSignerProvider.availableIdentifiers();
     final List<ImportKeystoreResult> results = new ArrayList<>();
     for (int i = 0; i < parsedBody.getKeystores().size(); i++) {
       try {
         final String jsonKeystoreData = parsedBody.getKeystores().get(i);
         final String password = parsedBody.getPasswords().get(i);
-        final String fileName = new JsonObject(jsonKeystoreData).getString("pubkey");
-        createKeyStoreYamlFileAt(
-            fileName,
-            jsonKeystoreData,
-            password,
-            KeyType.BLS // TODO check if it's always BLS format?
-        );
-        results.add(new ImportKeystoreResult(ImportKeystoreStatus.IMPORTED, "success"));
+        final String pubkey = new JsonObject(jsonKeystoreData).getString("pubkey");
+        if (existingPubkeys.contains(pubkey)) {
+          results.add(new ImportKeystoreResult(ImportKeystoreStatus.DUPLICATE, "Pubkey already imported"));
+        } else {
+          createKeyStoreYamlFileAt(
+              pubkey,
+              jsonKeystoreData,
+              password,
+              KeyType.BLS // TODO check if it's always BLS format?
+          );
+          results.add(new ImportKeystoreResult(ImportKeystoreStatus.IMPORTED, "success"));
+        }
       } catch (Exception e) {
-        results.add(new ImportKeystoreResult(ImportKeystoreStatus.ERROR, "Error importing keystore:\n" + e.getMessage()));
+        results.add(new ImportKeystoreResult(
+            ImportKeystoreStatus.ERROR,
+            "Error importing keystore:\n" + e.getMessage())
+        );
       }
     }
 
-    // TODO import parsedBody.slashingProtection
+    // TODO force reload right here via callback into runner
+    if (slashingProtection.isPresent()) {
+      try {
+        // TODO prevent signing for the duration of the import
+        final InputStream slashingProtectionData =
+            new ByteArrayInputStream(parsedBody.getSlashingProtection().getBytes(StandardCharsets.UTF_8));
+        slashingProtection.get().importData(slashingProtectionData);
+      } catch (Exception e) {
+        context.fail(500, e);
+        return;
+      }
+    }
 
     try {
-      context.response().setStatusCode(200).end(objectMapper.writeValueAsString(new ImportKeystoresResponse(results)));
+      context.response()
+          .putHeader(CONTENT_TYPE, JSON_UTF_8)
+          .setStatusCode(200)
+          .end(objectMapper.writeValueAsString(new ImportKeystoresResponse(results)));
     } catch (JsonProcessingException e) {
-      context.response().setStatusCode(500).end("{ \"message\": \"Internal server error.\"}");
+      context.fail(500, e);
     }
   }
 

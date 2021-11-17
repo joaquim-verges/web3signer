@@ -1,6 +1,7 @@
 package tech.pegasys.web3signer.tests.keymanager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -33,8 +34,10 @@ public class ImportKeystoresAcceptanceTest extends KeyManagerTestBase {
     final Response response = callImportKeystores(composeRequestBody());
     response
         .then()
+        .contentType(ContentType.JSON)
         .assertThat()
-        .statusCode(200);
+        .statusCode(200)
+        .body("data.status", hasItem("IMPORTED"));
     // TODO validate response
   }
 

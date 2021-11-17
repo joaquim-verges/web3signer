@@ -126,8 +126,6 @@ public class BlsArtifactSignerFactory extends AbstractArtifactSignerFactory {
     }
   }
 
-  //twice concert bubble employ canoe regular lazy twelve clap lamp near great
-  //somepassword
   @Override
   public KeyType getKeyType() {
     return KeyType.BLS;

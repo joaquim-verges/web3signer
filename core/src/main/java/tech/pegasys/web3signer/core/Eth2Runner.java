@@ -180,7 +180,11 @@ public class Eth2Runner extends Runner {
       routerFactory.addHandlerByOperationId(
           KEYMANAGER_IMPORT.name(),
           new BlockingHandlerDecorator(
-              new ImportKeystoresHandler(objectMapper, config.getKeyConfigPath()),
+              new ImportKeystoresHandler(
+                  objectMapper,
+                  config.getKeyConfigPath(),
+                  slashingProtection,
+                  blsSignerProvider),
               false
           ));
 
