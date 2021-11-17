@@ -1,7 +1,9 @@
 package tech.pegasys.web3signer.tests.keymanager;
 
+import com.google.common.io.Resources;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import io.vertx.core.json.JsonObject;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hamcrest.Matcher;
 import org.junit.jupiter.api.io.TempDir;
@@ -11,8 +13,10 @@ import tech.pegasys.web3signer.dsl.signer.SignerConfigurationBuilder;
 import tech.pegasys.web3signer.dsl.utils.MetadataFileHelpers;
 import tech.pegasys.web3signer.tests.AcceptanceTestBase;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
@@ -42,7 +46,7 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
     return given().baseUri(signer.getUrl()).get(KEYSTORE_ENDPOINT);
   }
 
-  public Response callImportKeystores(final String body) {
+  public Response callImportKeystores(final JsonObject body) {
     return given().baseUri(signer.getUrl()).contentType(ContentType.JSON).with().body(body).post(KEYSTORE_ENDPOINT);
   }
 
@@ -74,5 +78,12 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
     } catch (final IOException e) {
       throw new UncheckedIOException(e);
     }
+  }
+
+  protected String readFile(final String filePath) throws IOException, URISyntaxException {
+    final Path keystoreFile = Path.of(
+        new File(Resources.getResource(filePath).toURI()).getAbsolutePath()
+    );
+    return Files.readString(keystoreFile);
   }
 }

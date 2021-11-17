@@ -12,6 +12,7 @@
  */
 package tech.pegasys.web3signer.core.multikey.metadata;
 
+import org.apache.logging.log4j.LogManager;
 import tech.pegasys.signers.bls.keystore.KeyStore;
 import tech.pegasys.signers.bls.keystore.KeyStoreLoader;
 import tech.pegasys.signers.bls.keystore.KeyStoreValidationException;
@@ -111,12 +112,14 @@ public class BlsArtifactSignerFactory extends AbstractArtifactSignerFactory {
     }
   }
 
+
   private ArtifactSigner createKeystoreArtifact(final FileKeyStoreMetadata fileKeyStoreMetadata) {
     final Path keystoreFile = makeRelativePathAbsolute(fileKeyStoreMetadata.getKeystoreFile());
     final Path keystorePasswordFile =
         makeRelativePathAbsolute(fileKeyStoreMetadata.getKeystorePasswordFile());
     try {
       final KeyStoreData keyStoreData = KeyStoreLoader.loadFromFile(keystoreFile);
+      LogManager.getLogger().info("KEYSTORE DATA == " + keyStoreData);
       final String password = loadPassword(keystorePasswordFile);
       final Bytes privateKey = KeyStore.decrypt(password, keyStoreData);
       final BLSKeyPair keyPair = new BLSKeyPair(BLSSecretKey.fromBytes(Bytes32.wrap(privateKey)));
@@ -126,6 +129,8 @@ public class BlsArtifactSignerFactory extends AbstractArtifactSignerFactory {
     }
   }
 
+  //twice concert bubble employ canoe regular lazy twelve clap lamp near great
+  //somepassword
   @Override
   public KeyType getKeyType() {
     return KeyType.BLS;

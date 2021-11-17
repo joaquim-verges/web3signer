@@ -53,6 +53,7 @@ import tech.pegasys.web3signer.slashingprotection.SlashingProtection;
 import tech.pegasys.web3signer.slashingprotection.SlashingProtectionFactory;
 import tech.pegasys.web3signer.slashingprotection.SlashingProtectionParameters;
 
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -179,7 +180,7 @@ public class Eth2Runner extends Runner {
       routerFactory.addHandlerByOperationId(
           KEYMANAGER_IMPORT.name(),
           new BlockingHandlerDecorator(
-              new ImportKeystoresHandler(objectMapper),
+              new ImportKeystoresHandler(objectMapper, config.getKeyConfigPath()),
               false
           ));
 
