@@ -46,8 +46,8 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
     return given().baseUri(signer.getUrl()).get(KEYSTORE_ENDPOINT);
   }
 
-  public Response callImportKeystores(final JsonObject body) {
-    return given().baseUri(signer.getUrl()).contentType(ContentType.JSON).with().body(body).post(KEYSTORE_ENDPOINT);
+  public Response callImportKeystores(final String body) {
+    return given().baseUri(signer.getUrl()).contentType(ContentType.JSON).body(body).post(KEYSTORE_ENDPOINT);
   }
 
   protected void validateApiResponse(final Response response, final String path, final Matcher<?> matcher) {

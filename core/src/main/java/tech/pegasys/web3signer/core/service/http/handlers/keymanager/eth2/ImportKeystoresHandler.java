@@ -46,18 +46,14 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
       return;
     }
 
-
-    // TODO decode parsedBody.keystores
-
     final List<ImportKeystoreResult> results = new ArrayList<>();
     for (int i = 0; i < parsedBody.getKeystores().size(); i++) {
       try {
         final String jsonKeystoreData = parsedBody.getKeystores().get(i);
-        final String password = parsedBody.getKeystores().get(i);
-        final String pubkey = new JsonObject(jsonKeystoreData).getString("pubkey");
-        final Path yamlFile = keystorePath.resolve(pubkey + ".yaml");
+        final String password = parsedBody.getPasswords().get(i);
+        final String fileName = new JsonObject(jsonKeystoreData).getString("pubkey");
         createKeyStoreYamlFileAt(
-            yamlFile,
+            fileName,
             jsonKeystoreData,
             password,
             KeyType.BLS // TODO check if it's always BLS format?
@@ -70,7 +66,6 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
 
     // TODO import parsedBody.slashingProtection
 
-    // TODO respond with 200 + ImportKeystoresResponse
     try {
       context.response().setStatusCode(200).end(objectMapper.writeValueAsString(new ImportKeystoresResponse(results)));
     } catch (JsonProcessingException e) {
@@ -85,24 +80,24 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
   }
 
   private void handleInvalidRequest(final RoutingContext routingContext, final Exception e) {
-    LOG.debug("Invalid import keystores request - " + routingContext.getBodyAsString(), e);
+    LOG.info("Invalid import keystores request - " + routingContext.getBodyAsString(), e);
     routingContext.fail(BAD_REQUEST);
   }
 
-
   public void createKeyStoreYamlFileAt(
-      final Path metadataFilePath,
+      final String fileName,
       final String jsonKeystoreData,
       final String password,
       final KeyType keyType) throws IOException {
-    final String filename = metadataFilePath.getFileName().toString();
 
-    final String keystoreFileName = filename + ".json";
-    final Path keystoreFile = metadataFilePath.getParent().resolve(keystoreFileName);
+    final Path yamlFile = keystorePath.resolve(fileName + ".yaml");
+
+    final String keystoreFileName = fileName + ".json";
+    final Path keystoreFile = yamlFile.getParent().resolve(keystoreFileName);
     createTextFile(keystoreFile, jsonKeystoreData);
 
-    final String passwordFilename = filename + ".password";
-    final Path passwordFile = metadataFilePath.getParent().resolve(passwordFilename);
+    final String passwordFilename = fileName + ".password";
+    final Path passwordFile = yamlFile.getParent().resolve(passwordFilename);
     createTextFile(passwordFile, password);
 
     final Map<String, String> signingMetadata = new HashMap<>();
@@ -110,7 +105,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
     signingMetadata.put("keystoreFile", keystoreFile.toString());
     signingMetadata.put("keystorePasswordFile", passwordFile.toString());
     signingMetadata.put("keyType", keyType.name());
-    createYamlFile(metadataFilePath, signingMetadata);
+    createYamlFile(yamlFile, signingMetadata);
   }
 
   private void createTextFile(final Path keystoreFile, final String jsonKeystoreData) throws IOException {

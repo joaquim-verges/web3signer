@@ -12,7 +12,12 @@
  */
 package tech.pegasys.web3signer.core.multikey.metadata;
 
-import org.apache.logging.log4j.LogManager;
+import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.plugin.services.MetricsSystem;
+import org.hyperledger.besu.plugin.services.metrics.LabelledMetric;
+import org.hyperledger.besu.plugin.services.metrics.OperationTimer;
+import org.hyperledger.besu.plugin.services.metrics.OperationTimer.TimingContext;
 import tech.pegasys.signers.bls.keystore.KeyStore;
 import tech.pegasys.signers.bls.keystore.KeyStoreLoader;
 import tech.pegasys.signers.bls.keystore.KeyStoreValidationException;
@@ -28,13 +33,6 @@ import tech.pegasys.web3signer.core.signing.KeyType;
 
 import java.nio.file.Path;
 import java.util.function.Function;
-
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.plugin.services.MetricsSystem;
-import org.hyperledger.besu.plugin.services.metrics.LabelledMetric;
-import org.hyperledger.besu.plugin.services.metrics.OperationTimer;
-import org.hyperledger.besu.plugin.services.metrics.OperationTimer.TimingContext;
 
 public class BlsArtifactSignerFactory extends AbstractArtifactSignerFactory {
 
@@ -119,7 +117,6 @@ public class BlsArtifactSignerFactory extends AbstractArtifactSignerFactory {
         makeRelativePathAbsolute(fileKeyStoreMetadata.getKeystorePasswordFile());
     try {
       final KeyStoreData keyStoreData = KeyStoreLoader.loadFromFile(keystoreFile);
-      LogManager.getLogger().info("KEYSTORE DATA == " + keyStoreData);
       final String password = loadPassword(keystorePasswordFile);
       final Bytes privateKey = KeyStore.decrypt(password, keyStoreData);
       final BLSKeyPair keyPair = new BLSKeyPair(BLSSecretKey.fromBytes(Bytes32.wrap(privateKey)));
