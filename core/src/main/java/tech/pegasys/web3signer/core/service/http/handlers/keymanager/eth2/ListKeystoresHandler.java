@@ -34,7 +34,7 @@ public class ListKeystoresHandler implements Handler<RoutingContext> {
     try {
       context.response().putHeader(CONTENT_TYPE, JSON_UTF_8).end(objectMapper.writeValueAsString(response));
     } catch (JsonProcessingException e) {
-      context.response().setStatusCode(500).end("{ message: \"JSON Parsing error\"}");
+      context.fail(500, e);
     }
   }
 }

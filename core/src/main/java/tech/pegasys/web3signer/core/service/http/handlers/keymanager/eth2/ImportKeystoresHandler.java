@@ -33,7 +33,9 @@ import static tech.pegasys.web3signer.core.service.http.handlers.ContentTypes.JS
 public class ImportKeystoresHandler implements Handler<RoutingContext> {
 
   private static final Logger LOG = LogManager.getLogger();
+  public static final int SUCCESS = 200;
   public static final int BAD_REQUEST = 400;
+  public static final int SERVER_ERROR = 500;
   private static final ObjectMapper YAML_OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
 
   private final ObjectMapper objectMapper;
@@ -69,6 +71,8 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
         final String jsonKeystoreData = parsedBody.getKeystores().get(i);
         final String password = parsedBody.getPasswords().get(i);
         final String pubkey = new JsonObject(jsonKeystoreData).getString("pubkey");
+        // TODO pubkey should always be in hex format to match the loaded keys
+
         if (existingPubkeys.contains(pubkey)) {
           results.add(new ImportKeystoreResult(ImportKeystoreStatus.DUPLICATE, "Pubkey already imported"));
         } else {
@@ -96,7 +100,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
             new ByteArrayInputStream(parsedBody.getSlashingProtection().getBytes(StandardCharsets.UTF_8));
         slashingProtection.get().importData(slashingProtectionData);
       } catch (Exception e) {
-        context.fail(500, e);
+        context.fail(SERVER_ERROR, e);
         return;
       }
     }
@@ -104,10 +108,10 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
     try {
       context.response()
           .putHeader(CONTENT_TYPE, JSON_UTF_8)
-          .setStatusCode(200)
+          .setStatusCode(SUCCESS)
           .end(objectMapper.writeValueAsString(new ImportKeystoresResponse(results)));
     } catch (JsonProcessingException e) {
-      context.fail(500, e);
+      context.fail(SERVER_ERROR, e);
     }
   }
 
@@ -119,7 +123,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
 
   private void handleInvalidRequest(final RoutingContext routingContext, final Exception e) {
     LOG.info("Invalid import keystores request - " + routingContext.getBodyAsString(), e);
-    routingContext.fail(BAD_REQUEST);
+    routingContext.fail(BAD_REQUEST, e);
   }
 
   public void createKeyStoreYamlFileAt(
