@@ -80,20 +80,10 @@ public class ImportKeystoresAcceptanceTest extends KeyManagerTestBase {
     assertThat(signer.listPublicKeys(KeyType.BLS).size()).isEqualTo(0);
 
     callImportKeystores(composeRequestBody()).then().statusCode(200);
-    signer.callReload().then().statusCode(200);
-
-    // TODO dont need this once we reload on import
-    Awaitility.await()
-        .atMost(5, SECONDS)
-        .untilAsserted(() ->
-            validateApiResponse(
-                callListKeys(),
-                "data.validating_pubkey",
-                hasItem("0x98d083489b3b06b8740da2dfec5cc3c01b2086363fe023a9d7dc1f907633b1ff11f7b99b19e0533e969862270061d884")
-            )
-        );
 
     assertThat(signer.listPublicKeys(KeyType.BLS).size()).isEqualTo(1);
+    assertThat(signer.listPublicKeys(KeyType.BLS).get(0))
+        .isEqualTo("0x98d083489b3b06b8740da2dfec5cc3c01b2086363fe023a9d7dc1f907633b1ff11f7b99b19e0533e969862270061d884");
   }
 
   @Test

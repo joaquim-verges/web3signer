@@ -95,7 +95,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
     // TODO force reload right here via callback into runner
     if (slashingProtection.isPresent()) {
       try {
-        // TODO prevent signing for the duration of the import
+        // TODO prevent signing for the duration of the import?
         final InputStream slashingProtectionData =
             new ByteArrayInputStream(parsedBody.getSlashingProtection().getBytes(StandardCharsets.UTF_8));
         slashingProtection.get().importData(slashingProtectionData);
@@ -106,11 +106,14 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
     }
 
     try {
+      // reload keys synchronously
+      artifactSignerProvider.load().get();
+
       context.response()
           .putHeader(CONTENT_TYPE, JSON_UTF_8)
           .setStatusCode(SUCCESS)
           .end(objectMapper.writeValueAsString(new ImportKeystoresResponse(results)));
-    } catch (JsonProcessingException e) {
+    } catch (Exception e) {
       context.fail(SERVER_ERROR, e);
     }
   }
