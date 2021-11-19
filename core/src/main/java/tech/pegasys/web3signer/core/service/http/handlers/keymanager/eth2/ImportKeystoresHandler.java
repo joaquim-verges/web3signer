@@ -72,6 +72,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
         final String password = parsedBody.getPasswords().get(i);
         final String pubkey = new JsonObject(jsonKeystoreData).getString("pubkey");
         // TODO pubkey should always be in hex format to match the loaded keys
+        // TODO the BLS keystore generator has a pubkey without `0x` in front of it, could break comparison
 
         if (existingPubkeys.contains(pubkey)) {
           results.add(new ImportKeystoreResult(ImportKeystoreStatus.DUPLICATE, "Pubkey already imported"));
@@ -87,12 +88,11 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
       } catch (Exception e) {
         results.add(new ImportKeystoreResult(
             ImportKeystoreStatus.ERROR,
-            "Error importing keystore:\n" + e.getMessage())
+            "Error importing keystore: " + e.getMessage())
         );
       }
     }
 
-    // TODO force reload right here via callback into runner
     if (slashingProtection.isPresent()) {
       try {
         // TODO prevent signing for the duration of the import?

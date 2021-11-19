@@ -27,4 +27,6 @@ public interface ArtifactSignerProvider extends Closeable {
 
   @Override
   void close();
+
+  void removeSigner(final String identifier);
 }

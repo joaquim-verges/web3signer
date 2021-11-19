@@ -191,7 +191,11 @@ public class Eth2Runner extends Runner {
       routerFactory.addHandlerByOperationId(
           KEYMANAGER_DELETE.name(),
           new BlockingHandlerDecorator(
-              new DeleteKeystoresHandler(objectMapper),
+              new DeleteKeystoresHandler(
+                  objectMapper,
+                  config.getKeyConfigPath(),
+                  slashingProtection,
+                  blsSignerProvider),
               false
           ));
     }
@@ -228,8 +232,6 @@ public class Eth2Runner extends Runner {
           if (azureKeyVaultParameters.isAzureKeyVaultEnabled()) {
             signers.addAll(loadAzureSigners());
           }
-
-          // TODO add keys imported via API (not needed if added to yaml config folder in the correct format)
 
           final List<Bytes> validators =
               signers.stream()

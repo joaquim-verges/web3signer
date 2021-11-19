@@ -88,4 +88,9 @@ public class DefaultArtifactSignerProvider implements ArtifactSignerProvider {
   public void close() {
     executorService.shutdownNow();
   }
+
+  @Override
+  public void removeSigner(String identifier) {
+    signers.remove(identifier);
+  }
 }
