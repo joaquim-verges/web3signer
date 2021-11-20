@@ -127,7 +127,7 @@ public abstract class Runner implements Runnable {
         } else {
           context.response()
               .setStatusCode(401)
-              .end("{ message: \"permission error\" }");
+              .end("{ message: \"permission denied\" }");
         }
       });
       // register access log handler first

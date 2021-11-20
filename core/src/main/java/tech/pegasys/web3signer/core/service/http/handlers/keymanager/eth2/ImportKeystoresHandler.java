@@ -95,7 +95,9 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
 
     if (slashingProtection.isPresent()) {
       try {
-        // TODO prevent signing for the duration of the import?
+        // TODO might need to restrict the protection data to the matching imported keys?
+        // TODO either fail API or filter out the imported slashing data
+        // TODO also check what happens with other validators running
         final InputStream slashingProtectionData =
             new ByteArrayInputStream(parsedBody.getSlashingProtection().getBytes(StandardCharsets.UTF_8));
         slashingProtection.get().importData(slashingProtectionData);
@@ -145,6 +147,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
     final Path passwordFile = yamlFile.getParent().resolve(passwordFilename);
     createTextFile(passwordFile, password);
 
+    // TODO make this an actual POJO instead of a map
     final Map<String, String> signingMetadata = new HashMap<>();
     signingMetadata.put("type", "file-keystore");
     signingMetadata.put("keystoreFile", keystoreFile.toString());

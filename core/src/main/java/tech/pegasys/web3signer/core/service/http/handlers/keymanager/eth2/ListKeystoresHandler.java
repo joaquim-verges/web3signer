@@ -26,10 +26,13 @@ public class ListKeystoresHandler implements Handler<RoutingContext> {
   public void handle(final RoutingContext context) {
     // TODO should this only return BLS type keys?
     // TODO include derivation path when available (requires some plumbing to expose it from the artifactSignerProvider)
+    // TODO readonly = true for non API imported keys - add metadata to artifactSignerProvider.availableIdentifiers()
     final List<KeystoreInfo> data = artifactSignerProvider.availableIdentifiers()
         .stream()
         .map(key -> new KeystoreInfo(key, null, false))
         .collect(Collectors.toList());
+    // TODO cross match with matching pubkeys in specific BLS folder
+    // TODO if match -> readOnly = false otherwise true
     final ListKeystoresResponse response = new ListKeystoresResponse(data);
     try {
       context.response().putHeader(CONTENT_TYPE, JSON_UTF_8).end(objectMapper.writeValueAsString(response));

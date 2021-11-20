@@ -60,8 +60,10 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
     for (String pubkey : pubkeysToDelete) {
       try {
         // Remove key from memory
+        // TODO check that other validators are not using this key as well?
         signerProvider.removeSigner(pubkey);
         // Delete corresponding keystore file
+        // TODO inspect inside the file and match the pubkey
         final boolean deleted = Files.deleteIfExists(keystorePath.resolve(pubkey + ".yaml"));
         results.add(new DeleteKeystoreResult(
             deleted ? DeleteKeystoreStatus.DELETED : DeleteKeystoreStatus.NOT_FOUND,
