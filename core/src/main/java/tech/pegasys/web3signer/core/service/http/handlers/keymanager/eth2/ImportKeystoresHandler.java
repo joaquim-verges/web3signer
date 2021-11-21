@@ -70,9 +70,12 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
       try {
         final String jsonKeystoreData = parsedBody.getKeystores().get(i);
         final String password = parsedBody.getPasswords().get(i);
-        final String pubkey = new JsonObject(jsonKeystoreData).getString("pubkey");
+        String pubkey = new JsonObject(jsonKeystoreData).getString("pubkey");
+        // the BLS keystore generator generates a pubkey without `0x` in front of it, breaks comparison
+        if (!pubkey.startsWith("0x")) {
+          pubkey = "0x" + pubkey;
+        }
         // TODO pubkey should always be in hex format to match the loaded keys
-        // TODO the BLS keystore generator has a pubkey without `0x` in front of it, could break comparison
 
         if (existingPubkeys.contains(pubkey)) {
           results.add(new ImportKeystoreResult(ImportKeystoreStatus.DUPLICATE, "Pubkey already imported"));
