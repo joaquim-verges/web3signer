@@ -1,26 +1,17 @@
 package tech.pegasys.web3signer.tests.keymanager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.io.Resources;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.apache.tuweni.bytes.Bytes;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
-import tech.pegasys.signers.bls.keystore.KeyStore;
-import tech.pegasys.signers.bls.keystore.KeyStoreLoader;
-import tech.pegasys.signers.bls.keystore.model.KeyStoreData;
 import tech.pegasys.web3signer.core.service.http.handlers.keymanager.eth2.ImportKeystoresRequestBody;
 import tech.pegasys.web3signer.core.signing.KeyType;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.nio.file.Path;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 
@@ -50,15 +41,7 @@ public class ImportKeystoresAcceptanceTest extends KeyManagerTestBase {
 
   @Test
   public void existingKeyReturnsDuplicate() throws IOException, URISyntaxException {
-    final Path keystoreFile = Path.of(
-        new File(Resources.getResource("eth2/bls_keystore.json").toURI()).getAbsolutePath()
-    );
-    final KeyStoreData keyStoreData = KeyStoreLoader.loadFromFile(keystoreFile);
-    String password = "somepassword";
-    final Bytes privateKey = KeyStore.decrypt(password, keyStoreData);
-    createBlsKeys(true, privateKey.toHexString());
-
-
+    createBlsKey("eth2/bls_keystore.json", "somepassword");
     setupSignerWithKeyManagerApi();
 
     assertThat(signer.listPublicKeys(KeyType.BLS).size()).isEqualTo(1);
@@ -75,7 +58,7 @@ public class ImportKeystoresAcceptanceTest extends KeyManagerTestBase {
   }
 
   @Test
-  public void importAndReloadReturnsNewKeys() throws IOException, URISyntaxException {
+  public void importLoadsNewKeys() throws IOException, URISyntaxException {
     setupSignerWithKeyManagerApi();
     assertThat(signer.listPublicKeys(KeyType.BLS).size()).isEqualTo(0);
 
@@ -85,6 +68,8 @@ public class ImportKeystoresAcceptanceTest extends KeyManagerTestBase {
     assertThat(signer.listPublicKeys(KeyType.BLS).get(0))
         .isEqualTo("0x98d083489b3b06b8740da2dfec5cc3c01b2086363fe023a9d7dc1f907633b1ff11f7b99b19e0533e969862270061d884");
   }
+
+  // TODO slashing protection related tests
 
   @Test
   public void testRequestBodyParsing() throws IOException, URISyntaxException {

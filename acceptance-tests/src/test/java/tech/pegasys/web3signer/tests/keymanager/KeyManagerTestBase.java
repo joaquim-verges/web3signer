@@ -3,11 +3,14 @@ package tech.pegasys.web3signer.tests.keymanager;
 import com.google.common.io.Resources;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
-import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hamcrest.Matcher;
 import org.junit.jupiter.api.io.TempDir;
+import tech.pegasys.signers.bls.keystore.KeyStore;
+import tech.pegasys.signers.bls.keystore.KeyStoreLoader;
+import tech.pegasys.signers.bls.keystore.model.KeyStoreData;
 import tech.pegasys.teku.bls.BLSKeyPair;
 import tech.pegasys.teku.bls.BLSSecretKey;
 import tech.pegasys.web3signer.dsl.signer.SignerConfigurationBuilder;
@@ -51,8 +54,21 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
     return given().baseUri(signer.getUrl()).contentType(ContentType.JSON).body(body).post(KEYSTORE_ENDPOINT);
   }
 
+  public Response callDeleteKeystores(final String body) {
+    return given().baseUri(signer.getUrl()).contentType(ContentType.JSON).body(body).delete(KEYSTORE_ENDPOINT);
+  }
+
   protected void validateApiResponse(final Response response, final String path, final Matcher<?> matcher) {
     response.then().statusCode(200).contentType(ContentType.JSON).body(path, matcher);
+  }
+
+  protected void createBlsKey(String keystorePath, String password) throws URISyntaxException {
+    final Path keystoreFile = Path.of(
+        new File(Resources.getResource(keystorePath).toURI()).getAbsolutePath()
+    );
+    final KeyStoreData keyStoreData = KeyStoreLoader.loadFromFile(keystoreFile);
+    final Bytes privateKey = KeyStore.decrypt(password, keyStoreData);
+    createBlsKeys(true, privateKey.toHexString());
   }
 
   protected String[] createBlsKeys(boolean isValid, final String... privateKeys) {
