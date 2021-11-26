@@ -3,7 +3,6 @@ package tech.pegasys.web3signer.tests.keymanager;
 import com.google.common.io.Resources;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
-import org.apache.logging.log4j.LogManager;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hamcrest.Matcher;
@@ -78,7 +77,6 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
               final BLSKeyPair keyPair =
                   new BLSKeyPair(BLSSecretKey.fromBytes(Bytes32.fromHexString(privateKey)));
               final String publicKey = keyPair.getPublicKey().toString();
-              LogManager.getLogger().info("JOEE - pubkey = " + publicKey);
               final Path keyConfigFile = testDirectory.resolve(publicKey + ".yaml");
               if (isValid) {
                 metadataFileHelpers.createUnencryptedYamlFileAt(keyConfigFile, privateKey, BLS);

@@ -4,15 +4,22 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Handler;
 import io.vertx.ext.web.RoutingContext;
+import tech.pegasys.web3signer.core.multikey.metadata.SignerOrigin;
+import tech.pegasys.web3signer.core.signing.ArtifactSigner;
 import tech.pegasys.web3signer.core.signing.ArtifactSignerProvider;
+import tech.pegasys.web3signer.core.signing.BlsArtifactSigner;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
 import static tech.pegasys.web3signer.core.service.http.handlers.ContentTypes.JSON_UTF_8;
 
 public class ListKeystoresHandler implements Handler<RoutingContext> {
+  public static final int SUCCESS = 200;
+  public static final int SERVER_ERROR = 500;
+
   private final ArtifactSignerProvider artifactSignerProvider;
   private final ObjectMapper objectMapper;
 
@@ -24,20 +31,25 @@ public class ListKeystoresHandler implements Handler<RoutingContext> {
 
   @Override
   public void handle(final RoutingContext context) {
-    // TODO should this only return BLS type keys?
-    // TODO include derivation path when available (requires some plumbing to expose it from the artifactSignerProvider)
-    // TODO readonly = true for non API imported keys - add metadata to artifactSignerProvider.availableIdentifiers()
     final List<KeystoreInfo> data = artifactSignerProvider.availableIdentifiers()
         .stream()
-        .map(key -> new KeystoreInfo(key, null, false))
+        .map(artifactSignerProvider::getSigner)
+        .filter(signer -> signer.isPresent() && signer.get() instanceof BlsArtifactSigner)
+        .map(signer -> (BlsArtifactSigner) signer.get())
+        .map(signer -> new KeystoreInfo(signer.getIdentifier(), null, isReadOnly(signer)))
         .collect(Collectors.toList());
-    // TODO cross match with matching pubkeys in specific BLS folder
-    // TODO if match -> readOnly = false otherwise true
     final ListKeystoresResponse response = new ListKeystoresResponse(data);
     try {
-      context.response().putHeader(CONTENT_TYPE, JSON_UTF_8).end(objectMapper.writeValueAsString(response));
+      context.response().putHeader(CONTENT_TYPE, JSON_UTF_8)
+          .setStatusCode(SUCCESS)
+          .end(objectMapper.writeValueAsString(response));
     } catch (JsonProcessingException e) {
-      context.fail(500, e);
+      context.fail(SERVER_ERROR, e);
     }
+  }
+
+  // only signers loaded from key store files are editable, everything else is read only
+  private boolean isReadOnly(BlsArtifactSigner signer) {
+    return signer.getOrigin() != SignerOrigin.FILE_KEYSTORE;
   }
 }

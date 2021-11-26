@@ -18,13 +18,18 @@ import tech.pegasys.teku.bls.BLS;
 import tech.pegasys.teku.bls.BLSKeyPair;
 
 import org.apache.tuweni.bytes.Bytes;
+import tech.pegasys.web3signer.core.multikey.metadata.BlsArtifactSignerFactory;
+import tech.pegasys.web3signer.core.multikey.metadata.SignerOrigin;
 
 public class BlsArtifactSigner implements ArtifactSigner {
 
   private final BLSKeyPair keyPair;
+  private final SignerOrigin origin;
 
-  public BlsArtifactSigner(final BLSKeyPair keyPair) {
+  public BlsArtifactSigner(final BLSKeyPair keyPair,
+                           final SignerOrigin origin) {
     this.keyPair = keyPair;
+    this.origin = origin;
   }
 
   @Override
@@ -35,5 +40,9 @@ public class BlsArtifactSigner implements ArtifactSigner {
   @Override
   public BlsArtifactSignature sign(final Bytes data) {
     return new BlsArtifactSignature(BLS.sign(keyPair.getSecretKey(), data));
+  }
+
+  public SignerOrigin getOrigin() {
+    return origin;
   }
 }

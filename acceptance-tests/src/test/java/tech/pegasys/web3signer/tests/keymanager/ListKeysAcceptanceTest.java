@@ -69,6 +69,6 @@ public class ListKeysAcceptanceTest extends KeyManagerTestBase {
         );
   }
 
-  // TODO test keys after deletion
+  // TODO test read only keys
 
 }

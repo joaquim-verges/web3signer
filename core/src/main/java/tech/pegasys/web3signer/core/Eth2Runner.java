@@ -33,6 +33,7 @@ import tech.pegasys.web3signer.core.multikey.DefaultArtifactSignerProvider;
 import tech.pegasys.web3signer.core.multikey.SignerLoader;
 import tech.pegasys.web3signer.core.multikey.metadata.AbstractArtifactSignerFactory;
 import tech.pegasys.web3signer.core.multikey.metadata.BlsArtifactSignerFactory;
+import tech.pegasys.web3signer.core.multikey.metadata.SignerOrigin;
 import tech.pegasys.web3signer.core.multikey.metadata.interlock.InterlockKeyProvider;
 import tech.pegasys.web3signer.core.multikey.metadata.parser.YamlSignerParser;
 import tech.pegasys.web3signer.core.multikey.metadata.yubihsm.YubiHsmOpaqueDataProvider;
@@ -278,7 +279,7 @@ public class Eth2Runner extends Runner {
             final Bytes privateKeyBytes = Bytes.fromHexString(value);
             final BLSKeyPair keyPair =
                 new BLSKeyPair(BLSSecretKey.fromBytes(Bytes32.wrap(privateKeyBytes)));
-            return new BlsArtifactSigner(keyPair);
+            return new BlsArtifactSigner(keyPair, SignerOrigin.AZURE);
           } catch (final Exception e) {
             LOG.error("Failed to load secret named {} from azure key vault.", name);
             return null;
