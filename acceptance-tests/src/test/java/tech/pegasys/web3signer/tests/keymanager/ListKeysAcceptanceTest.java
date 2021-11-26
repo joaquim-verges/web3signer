@@ -70,5 +70,10 @@ public class ListKeysAcceptanceTest extends KeyManagerTestBase {
   }
 
   // TODO test read only keys
+  @Test
+  public void nonKeystoreKeysAreReadOnly() {
+    createBlsKeys(false, PRIVATE_KEYS[0]);
+
+  }
 
 }

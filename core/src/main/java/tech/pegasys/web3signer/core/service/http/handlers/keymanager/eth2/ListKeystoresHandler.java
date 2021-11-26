@@ -5,12 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Handler;
 import io.vertx.ext.web.RoutingContext;
 import tech.pegasys.web3signer.core.multikey.metadata.SignerOrigin;
-import tech.pegasys.web3signer.core.signing.ArtifactSigner;
 import tech.pegasys.web3signer.core.signing.ArtifactSignerProvider;
 import tech.pegasys.web3signer.core.signing.BlsArtifactSigner;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;

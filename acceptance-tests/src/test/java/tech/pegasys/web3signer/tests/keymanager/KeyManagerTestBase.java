@@ -22,6 +22,8 @@ import java.io.UncheckedIOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
@@ -94,6 +96,20 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
     } catch (final IOException e) {
       throw new UncheckedIOException(e);
     }
+  }
+
+  private Path createFileInConfigsDirectory(final String filename, final String privateKey)
+      throws IOException {
+    final Path file = testDirectory.resolve(filename);
+
+    final Map<String, String> unencryptedKeyMetadataFile = new HashMap<>();
+    unencryptedKeyMetadataFile.put("type", "file-raw");
+    unencryptedKeyMetadataFile.put("privateKey", "0x" + privateKey);
+    final String yamlContent = YAML_OBJECT_MAPPER.writeValueAsString(unencryptedKeyMetadataFile);
+
+    Files.writeString(file, yamlContent);
+    assertThat(file).exists();
+    return file;
   }
 
   protected String readFile(final String filePath) throws IOException, URISyntaxException {
