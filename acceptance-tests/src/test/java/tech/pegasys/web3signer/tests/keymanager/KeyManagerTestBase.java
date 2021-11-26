@@ -9,8 +9,10 @@ import org.hamcrest.Matcher;
 import org.junit.jupiter.api.io.TempDir;
 import tech.pegasys.signers.bls.keystore.KeyStore;
 import tech.pegasys.signers.bls.keystore.KeyStoreLoader;
+import tech.pegasys.signers.bls.keystore.model.KdfFunction;
 import tech.pegasys.signers.bls.keystore.model.KeyStoreData;
 import tech.pegasys.teku.bls.BLSKeyPair;
+import tech.pegasys.teku.bls.BLSPublicKey;
 import tech.pegasys.teku.bls.BLSSecretKey;
 import tech.pegasys.web3signer.dsl.signer.SignerConfigurationBuilder;
 import tech.pegasys.web3signer.dsl.utils.MetadataFileHelpers;
@@ -22,8 +24,6 @@ import java.io.UncheckedIOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
@@ -69,46 +69,23 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
     );
     final KeyStoreData keyStoreData = KeyStoreLoader.loadFromFile(keystoreFile);
     final Bytes privateKey = KeyStore.decrypt(password, keyStoreData);
-    createBlsKeys(true, privateKey.toHexString());
+    createKeystoreYamlFile(privateKey.toHexString());
   }
 
-  protected String[] createBlsKeys(boolean isValid, final String... privateKeys) {
-    return Stream.of(privateKeys)
-        .map(
-            privateKey -> {
-              final BLSKeyPair keyPair =
-                  new BLSKeyPair(BLSSecretKey.fromBytes(Bytes32.fromHexString(privateKey)));
-              final String publicKey = keyPair.getPublicKey().toString();
-              final Path keyConfigFile = testDirectory.resolve(publicKey + ".yaml");
-              if (isValid) {
-                metadataFileHelpers.createUnencryptedYamlFileAt(keyConfigFile, privateKey, BLS);
-              } else {
-                createInvalidFile(keyConfigFile);
-              }
-              return publicKey;
-            })
-        .toArray(String[]::new);
+  protected String createKeystoreYamlFile(final String privateKey) {
+    final BLSSecretKey key =
+        BLSSecretKey.fromBytes(Bytes32.fromHexString(privateKey));
+    final BLSKeyPair keyPair = new BLSKeyPair(key);
+    final BLSPublicKey publicKey = keyPair.getPublicKey();
+    final String configFilename = publicKey.toString(); //.substring(2); TODO make everything work with and without 0x
+    final Path keyConfigFile = testDirectory.resolve(configFilename + ".yaml");
+    metadataFileHelpers.createKeyStoreYamlFileAt(keyConfigFile, keyPair, KdfFunction.PBKDF2);
+    return publicKey.toString();
   }
 
-  private void createInvalidFile(final Path keyConfigFile) {
-    try {
-      Files.createFile(keyConfigFile);
-    } catch (final IOException e) {
-      throw new UncheckedIOException(e);
-    }
-  }
-
-  private Path createFileInConfigsDirectory(final String filename, final String privateKey)
-      throws IOException {
-    final Path file = testDirectory.resolve(filename);
-
-    final Map<String, String> unencryptedKeyMetadataFile = new HashMap<>();
-    unencryptedKeyMetadataFile.put("type", "file-raw");
-    unencryptedKeyMetadataFile.put("privateKey", "0x" + privateKey);
-    final String yamlContent = YAML_OBJECT_MAPPER.writeValueAsString(unencryptedKeyMetadataFile);
-
-    Files.writeString(file, yamlContent);
-    assertThat(file).exists();
+  protected Path createRawPrivateKeyFile(final String privateKey) {
+    final Path file = testDirectory.resolve(privateKey.hashCode() + ".yaml");
+    metadataFileHelpers.createUnencryptedYamlFileAt(file, privateKey, BLS);
     return file;
   }
 
