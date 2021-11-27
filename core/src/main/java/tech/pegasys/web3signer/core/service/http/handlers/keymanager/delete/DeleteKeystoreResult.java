@@ -1,4 +1,4 @@
-package tech.pegasys.web3signer.core.service.http.handlers.keymanager.eth2;
+package tech.pegasys.web3signer.core.service.http.handlers.keymanager.delete;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;

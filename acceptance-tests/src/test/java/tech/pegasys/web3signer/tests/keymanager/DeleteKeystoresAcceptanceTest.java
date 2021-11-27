@@ -6,7 +6,7 @@ import io.restassured.response.Response;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.junit.jupiter.api.Test;
-import tech.pegasys.web3signer.core.service.http.handlers.keymanager.eth2.DeleteKeystoresRequestBody;
+import tech.pegasys.web3signer.core.service.http.handlers.keymanager.delete.DeleteKeystoresRequestBody;
 
 import java.io.IOException;
 import java.net.URISyntaxException;

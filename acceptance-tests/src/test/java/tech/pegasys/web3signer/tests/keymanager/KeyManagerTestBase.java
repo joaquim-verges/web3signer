@@ -20,11 +20,9 @@ import tech.pegasys.web3signer.tests.AcceptanceTestBase;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
 import static tech.pegasys.web3signer.core.signing.KeyType.BLS;
