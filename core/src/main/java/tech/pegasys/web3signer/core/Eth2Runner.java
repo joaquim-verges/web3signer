@@ -14,6 +14,7 @@ package tech.pegasys.web3signer.core;
 
 import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.ETH2_LIST;
 import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.ETH2_SIGN;
+import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.KEYMANAGER_LIST;
 import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.RELOAD;
 import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.KEYMANAGER_LIST;
 import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.KEYMANAGER_IMPORT;
@@ -169,7 +170,6 @@ public class Eth2Runner extends Runner {
     addReloadHandler(routerFactory, blsSignerProvider, RELOAD.name(), errorHandler);
 
     if (isKeyManagerApiEnabled) {
-      // TODO custom objectMapper? should be ok to re-use the signing one
       routerFactory.addHandlerByOperationId(
           KEYMANAGER_LIST.name(),
           new BlockingHandlerDecorator(
@@ -220,7 +220,8 @@ public class Eth2Runner extends Runner {
                     hashicorpConnectionFactory,
                     interlockKeyProvider,
                     yubiHsmOpaqueDataProvider,
-                    BlsArtifactSigner::new);
+                    (args) ->
+                        new BlsArtifactSigner(args.getKeyPair(), args.getOrigin(), args.getPath()));
 
             signers.addAll(
                 SignerLoader.load(

@@ -1,3 +1,15 @@
+/*
+ * Copyright 2021 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.web3signer.tests.keymanager;
 
 import com.google.common.io.Resources;
@@ -32,8 +44,7 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
   private static final Long MINIMAL_ALTAIR_FORK = 0L;
   protected static final MetadataFileHelpers metadataFileHelpers = new MetadataFileHelpers();
 
-  @TempDir
-  protected Path testDirectory;
+  @TempDir protected Path testDirectory;
 
   protected void setupSignerWithKeyManagerApi() {
     final SignerConfigurationBuilder builder = new SignerConfigurationBuilder();
@@ -57,10 +68,6 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
     return given().baseUri(signer.getUrl()).contentType(ContentType.JSON).body(body).delete(KEYSTORE_ENDPOINT);
   }
 
-  protected void validateApiResponse(final Response response, final String path, final Matcher<?> matcher) {
-    response.then().statusCode(200).contentType(ContentType.JSON).body(path, matcher);
-  }
-
   protected void createBlsKey(String keystorePath, String password) throws URISyntaxException {
     final Path keystoreFile = Path.of(
         new File(Resources.getResource(keystorePath).toURI()).getAbsolutePath()
@@ -70,21 +77,19 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
     createKeystoreYamlFile(privateKey.toHexString());
   }
 
+  protected void validateApiResponse(
+      final Response response, final String path, final Matcher<?> matcher) {
+    response.then().statusCode(200).contentType(ContentType.JSON).body(path, matcher);
+  }
+
   protected String createKeystoreYamlFile(final String privateKey) {
-    final BLSSecretKey key =
-        BLSSecretKey.fromBytes(Bytes32.fromHexString(privateKey));
+    final BLSSecretKey key = BLSSecretKey.fromBytes(Bytes32.fromHexString(privateKey));
     final BLSKeyPair keyPair = new BLSKeyPair(key);
     final BLSPublicKey publicKey = keyPair.getPublicKey();
-    final String configFilename = publicKey.toString(); //.substring(2); TODO make everything work with and without 0x
+    final String configFilename = publicKey.toString();
     final Path keyConfigFile = testDirectory.resolve(configFilename + ".yaml");
     metadataFileHelpers.createKeyStoreYamlFileAt(keyConfigFile, keyPair, KdfFunction.PBKDF2);
     return publicKey.toString();
-  }
-
-  protected Path createRawPrivateKeyFile(final String privateKey) {
-    final Path file = testDirectory.resolve(privateKey.hashCode() + ".yaml");
-    metadataFileHelpers.createUnencryptedYamlFileAt(file, privateKey, BLS);
-    return file;
   }
 
   protected String readFile(final String filePath) throws IOException, URISyntaxException {
@@ -92,5 +97,15 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
         new File(Resources.getResource(filePath).toURI()).getAbsolutePath()
     );
     return Files.readString(keystoreFile);
+  }
+
+  protected String createRawPrivateKeyFile(final String privateKey) {
+    final BLSSecretKey key = BLSSecretKey.fromBytes(Bytes32.fromHexString(privateKey));
+    final BLSKeyPair keyPair = new BLSKeyPair(key);
+    final BLSPublicKey publicKey = keyPair.getPublicKey();
+    final String configFilename = publicKey.toString();
+    final Path file = testDirectory.resolve(configFilename + ".yaml");
+    metadataFileHelpers.createUnencryptedYamlFileAt(file, privateKey, BLS);
+    return publicKey.toString();
   }
 }

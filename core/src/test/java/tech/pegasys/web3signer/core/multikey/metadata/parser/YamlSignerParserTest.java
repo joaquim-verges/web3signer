@@ -199,7 +199,7 @@ class YamlSignerParserTest {
     final BlsArtifactSigner artifactSigner =
         new BlsArtifactSigner(
             new BLSKeyPair(BLSSecretKey.fromBytes(Bytes32.fromHexString(PRIVATE_KEY))),
-                SignerOrigin.FILE_KEYSTORE);
+            SignerOrigin.FILE_KEYSTORE);
     when(blsArtifactSignerFactory.create(any(FileKeyStoreMetadata.class)))
         .thenReturn(artifactSigner);
 
