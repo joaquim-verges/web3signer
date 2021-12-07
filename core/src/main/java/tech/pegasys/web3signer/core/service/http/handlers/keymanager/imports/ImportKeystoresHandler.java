@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +56,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
 
   @Override
   public void handle(RoutingContext context) {
+    // API spec - https://github.com/ethereum/keymanager-APIs/tree/master/flows#import
     final RequestParameters params = context.get("parsedParameters");
     final ImportKeystoresRequestBody parsedBody;
     try {
@@ -62,6 +64,40 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
     } catch (final IllegalArgumentException | JsonProcessingException e) {
       handleInvalidRequest(context, e);
       return;
+    }
+
+    // check that keystores have matching passwords
+    if (parsedBody.getKeystores().size() != parsedBody.getPasswords().size()) {
+      context.fail(BAD_REQUEST);
+      return;
+    }
+
+    // no keystores passed in, nothing to do, return 200.
+    if (parsedBody.getKeystores().isEmpty()) {
+      try {
+        context.response()
+            .putHeader(CONTENT_TYPE, JSON_UTF_8)
+            .setStatusCode(SUCCESS)
+            .end(objectMapper.writeValueAsString(new ImportKeystoresResponse(Collections.emptyList())));
+      } catch (JsonProcessingException e) {
+        context.fail(SERVER_ERROR, e);
+      }
+      return;
+    }
+
+    // read slashing protection data if present
+    if (slashingProtection.isPresent()) {
+      try {
+        // TODO might need to restrict the protection data to the matching imported keys?
+        // TODO either fail API or filter out the imported slashing data
+        // TODO also check what happens with other validators running
+        final InputStream slashingProtectionData =
+            new ByteArrayInputStream(parsedBody.getSlashingProtection().getBytes(StandardCharsets.UTF_8));
+        slashingProtection.get().importData(slashingProtectionData);
+      } catch (Exception e) {
+        context.fail(SERVER_ERROR, e);
+        return;
+      }
     }
 
     final Set<String> existingPubkeys = artifactSignerProvider.availableIdentifiers();
@@ -96,19 +132,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
       }
     }
 
-    if (slashingProtection.isPresent()) {
-      try {
-        // TODO might need to restrict the protection data to the matching imported keys?
-        // TODO either fail API or filter out the imported slashing data
-        // TODO also check what happens with other validators running
-        final InputStream slashingProtectionData =
-            new ByteArrayInputStream(parsedBody.getSlashingProtection().getBytes(StandardCharsets.UTF_8));
-        slashingProtection.get().importData(slashingProtectionData);
-      } catch (Exception e) {
-        context.fail(SERVER_ERROR, e);
-        return;
-      }
-    }
+
 
     try {
       // reload keys synchronously
