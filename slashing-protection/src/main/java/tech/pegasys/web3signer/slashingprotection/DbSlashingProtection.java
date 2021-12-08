@@ -36,6 +36,7 @@ import java.io.OutputStream;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -127,6 +128,17 @@ public class DbSlashingProtection implements SlashingProtection {
     try {
       LOG.info("Importing slashing protection database");
       interchangeManager.importData(input);
+      LOG.info("Import complete");
+    } catch (final IOException | UnsupportedOperationException | IllegalArgumentException e) {
+      throw new RuntimeException("Failed to import database content", e);
+    }
+  }
+
+  @Override
+  public void importDataWithFilter(final InputStream input, final List<String> pubkeys) {
+    try {
+      LOG.info("Importing slashing protection database for keys: " + String.join(",", pubkeys));
+      interchangeManager.importDataWithFilter(input, pubkeys);
       LOG.info("Import complete");
     } catch (final IOException | UnsupportedOperationException | IllegalArgumentException e) {
       throw new RuntimeException("Failed to import database content", e);

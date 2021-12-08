@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
 import static tech.pegasys.web3signer.core.service.http.handlers.ContentTypes.JSON_UTF_8;
@@ -72,7 +73,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
       return;
     }
 
-    // no keystores passed in, nothing to do, return 200.
+    // no keystores passed in, nothing to do, return 200 and empty response.
     if (parsedBody.getKeystores().isEmpty()) {
       try {
         context.response()
@@ -85,23 +86,9 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
       return;
     }
 
-    // read slashing protection data if present
-    if (slashingProtection.isPresent()) {
-      try {
-        // TODO might need to restrict the protection data to the matching imported keys?
-        // TODO either fail API or filter out the imported slashing data
-        // TODO also check what happens with other validators running
-        final InputStream slashingProtectionData =
-            new ByteArrayInputStream(parsedBody.getSlashingProtection().getBytes(StandardCharsets.UTF_8));
-        slashingProtection.get().importData(slashingProtectionData);
-      } catch (Exception e) {
-        context.fail(SERVER_ERROR, e);
-        return;
-      }
-    }
-
     final Set<String> existingPubkeys = artifactSignerProvider.availableIdentifiers();
     final List<ImportKeystoreResult> results = new ArrayList<>();
+    final List<String> importedPubkeys = new ArrayList<>();
     for (int i = 0; i < parsedBody.getKeystores().size(); i++) {
       try {
         final String jsonKeystoreData = parsedBody.getKeystores().get(i);
@@ -111,7 +98,6 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
         if (!pubkey.startsWith("0x")) {
           pubkey = "0x" + pubkey;
         }
-        // TODO pubkey should always be in hex format to match the loaded keys
 
         if (existingPubkeys.contains(pubkey)) {
           results.add(new ImportKeystoreResult(ImportKeystoreStatus.DUPLICATE, "Pubkey already imported"));
@@ -120,9 +106,10 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
               pubkey,
               jsonKeystoreData,
               password,
-              KeyType.BLS // TODO check if it's always BLS format?
+              KeyType.BLS
           );
           results.add(new ImportKeystoreResult(ImportKeystoreStatus.IMPORTED, "success"));
+          importedPubkeys.add(pubkey);
         }
       } catch (Exception e) {
         results.add(new ImportKeystoreResult(
@@ -132,7 +119,18 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
       }
     }
 
-
+    // read slashing protection data if present and import data for newly imported keys only
+    if (slashingProtection.isPresent()) {
+      try {
+        final InputStream slashingProtectionData =
+            new ByteArrayInputStream(parsedBody.getSlashingProtection().getBytes(StandardCharsets.UTF_8));
+        slashingProtection.get().importDataWithFilter(slashingProtectionData, importedPubkeys);
+      } catch (Exception e) {
+        cleanupImportedKeystoreFiles(importedPubkeys);
+        context.fail(BAD_REQUEST, e);
+        return;
+      }
+    }
 
     try {
       // reload keys synchronously
@@ -143,6 +141,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
           .setStatusCode(SUCCESS)
           .end(objectMapper.writeValueAsString(new ImportKeystoresResponse(results)));
     } catch (Exception e) {
+      cleanupImportedKeystoreFiles(importedPubkeys);
       context.fail(SERVER_ERROR, e);
     }
   }
@@ -174,7 +173,6 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
     final Path passwordFile = yamlFile.getParent().resolve(passwordFilename);
     createTextFile(passwordFile, password);
 
-    // TODO make this an actual POJO instead of a map
     final Map<String, String> signingMetadata = new HashMap<>();
     signingMetadata.put("type", "file-keystore");
     signingMetadata.put("keystoreFile", keystoreFile.toString());
@@ -192,4 +190,13 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
     YAML_OBJECT_MAPPER.writeValue(filePath.toFile(), signingMetadata);
   }
 
+  private void cleanupImportedKeystoreFiles(final List<String> pubkeys) {
+    for (String pubkey : pubkeys) {
+      try {
+        Files.deleteIfExists(keystorePath.resolve(pubkey + ".yaml"));
+      } catch (IOException e) {
+        LOG.error("Failed to cleanup imported keystore file for key: " + pubkey);
+      }
+    }
+  }
 }

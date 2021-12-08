@@ -15,10 +15,13 @@ package tech.pegasys.web3signer.slashingprotection.interchange;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.List;
 
 public interface InterchangeManager {
 
   void importData(InputStream in) throws IOException;
+
+  void importDataWithFilter(InputStream in, List<String> pubkeys) throws IOException;
 
   void export(OutputStream out) throws IOException;
 }
