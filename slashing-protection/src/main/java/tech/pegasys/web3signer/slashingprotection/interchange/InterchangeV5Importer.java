@@ -23,8 +23,8 @@ import tech.pegasys.web3signer.slashingprotection.validator.GenesisValidatorRoot
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -71,10 +71,11 @@ public class InterchangeV5Importer {
   }
 
   public void importData(final InputStream input) throws IOException {
-    importDataWithFilter(input, Collections.emptyList());
+    importDataWithFilter(input, Optional.empty());
   }
 
-  public void importDataWithFilter(final InputStream input, final List<String> pubkeys) throws IOException {
+  public void importDataWithFilter(final InputStream input, final Optional<List<String>> pubkeys)
+      throws IOException {
     try (final JsonParser jsonParser = mapper.getFactory().createParser(input)) {
       final ObjectNode rootNode = mapper.readTree(jsonParser);
 
@@ -111,14 +112,16 @@ public class InterchangeV5Importer {
     }
   }
 
-  private void parseValidator(final Handle handle, final JsonNode node, final List<String> pubkeys)
+  private void parseValidator(
+      final Handle handle, final JsonNode node, final Optional<List<String>> pubkeys)
       throws JsonProcessingException {
     if (node.isArray()) {
       throw new IllegalStateException("Element of 'data' was not an object");
     }
     final ObjectNode parentNode = (ObjectNode) node;
     final String pubKey = parentNode.required("pubkey").textValue();
-    if (!pubkeys.isEmpty() && !pubkeys.contains(pubKey)) {
+
+    if (pubkeys.isPresent() && !pubkeys.get().contains(pubKey)) {
       LOG.info("Skipping data import for validator " + pubKey);
       return;
     }
@@ -154,5 +157,4 @@ public class InterchangeV5Importer {
 
     attestationImporter.importFrom(signedAttestationNode);
   }
-
 }

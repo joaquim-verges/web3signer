@@ -14,11 +14,10 @@ package tech.pegasys.web3signer.core;
 
 import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.ETH2_LIST;
 import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.ETH2_SIGN;
+import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.KEYMANAGER_DELETE;
+import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.KEYMANAGER_IMPORT;
 import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.KEYMANAGER_LIST;
 import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.RELOAD;
-import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.KEYMANAGER_LIST;
-import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.KEYMANAGER_IMPORT;
-import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.KEYMANAGER_DELETE;
 import static tech.pegasys.web3signer.core.signing.KeyType.BLS;
 
 import tech.pegasys.signers.azure.AzureKeyVault;
@@ -173,31 +172,21 @@ public class Eth2Runner extends Runner {
       routerFactory.addHandlerByOperationId(
           KEYMANAGER_LIST.name(),
           new BlockingHandlerDecorator(
-              new ListKeystoresHandler(blsSignerProvider, objectMapper),
-              false
-          ));
+              new ListKeystoresHandler(blsSignerProvider, objectMapper), false));
 
       routerFactory.addHandlerByOperationId(
           KEYMANAGER_IMPORT.name(),
           new BlockingHandlerDecorator(
               new ImportKeystoresHandler(
-                  objectMapper,
-                  config.getKeyConfigPath(),
-                  slashingProtection,
-                  blsSignerProvider),
-              false
-          ));
+                  objectMapper, config.getKeyConfigPath(), slashingProtection, blsSignerProvider),
+              false));
 
       routerFactory.addHandlerByOperationId(
           KEYMANAGER_DELETE.name(),
           new BlockingHandlerDecorator(
               new DeleteKeystoresHandler(
-                  objectMapper,
-                  config.getKeyConfigPath(),
-                  slashingProtection,
-                  blsSignerProvider),
-              false
-          ));
+                  objectMapper, config.getKeyConfigPath(), slashingProtection, blsSignerProvider),
+              false));
     }
   }
 
@@ -211,8 +200,8 @@ public class Eth2Runner extends Runner {
               new HashicorpConnectionFactory(vertx);
 
           try (final InterlockKeyProvider interlockKeyProvider = new InterlockKeyProvider(vertx);
-               final YubiHsmOpaqueDataProvider yubiHsmOpaqueDataProvider =
-                   new YubiHsmOpaqueDataProvider()) {
+              final YubiHsmOpaqueDataProvider yubiHsmOpaqueDataProvider =
+                  new YubiHsmOpaqueDataProvider()) {
             final AbstractArtifactSignerFactory artifactSignerFactory =
                 new BlsArtifactSignerFactory(
                     config.getKeyConfigPath(),

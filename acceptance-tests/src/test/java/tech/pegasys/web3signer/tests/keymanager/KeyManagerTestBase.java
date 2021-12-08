@@ -12,13 +12,9 @@
  */
 package tech.pegasys.web3signer.tests.keymanager;
 
-import com.google.common.io.Resources;
-import io.restassured.http.ContentType;
-import io.restassured.response.Response;
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
-import org.hamcrest.Matcher;
-import org.junit.jupiter.api.io.TempDir;
+import static io.restassured.RestAssured.given;
+import static tech.pegasys.web3signer.core.signing.KeyType.BLS;
+
 import tech.pegasys.signers.bls.keystore.KeyStore;
 import tech.pegasys.signers.bls.keystore.KeyStoreLoader;
 import tech.pegasys.signers.bls.keystore.model.KdfFunction;
@@ -36,12 +32,20 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static io.restassured.RestAssured.given;
-import static tech.pegasys.web3signer.core.signing.KeyType.BLS;
+import com.google.common.io.Resources;
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
+import org.hamcrest.Matcher;
+import org.jdbi.v3.core.Jdbi;
+import org.junit.jupiter.api.io.TempDir;
 
 public class KeyManagerTestBase extends AcceptanceTestBase {
   private static final String KEYSTORE_ENDPOINT = "/eth/v1/keystores";
   private static final Long MINIMAL_ALTAIR_FORK = 0L;
+  public static final String DB_USERNAME = "postgres";
+  public static final String DB_PASSWORD = "postgres";
   protected static final MetadataFileHelpers metadataFileHelpers = new MetadataFileHelpers();
 
   @TempDir protected Path testDirectory;
@@ -52,8 +56,13 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
         .withKeyStoreDirectory(testDirectory)
         .withMode("eth2")
         .withAltairForkEpoch(MINIMAL_ALTAIR_FORK)
+        .withSlashingEnabled(true)
+        .withSlashingProtectionDbUsername(DB_USERNAME)
+        .withSlashingProtectionDbPassword(DB_PASSWORD)
         .withKeyManagerApiEnabled(true);
     startSigner(builder.build());
+    final Jdbi jdbi = Jdbi.create(signer.getSlashingDbUrl(), DB_USERNAME, DB_PASSWORD);
+    jdbi.withHandle(h -> h.execute("DELETE FROM validators"));
   }
 
   public Response callListKeys() {
@@ -61,17 +70,24 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
   }
 
   public Response callImportKeystores(final String body) {
-    return given().baseUri(signer.getUrl()).contentType(ContentType.JSON).body(body).post(KEYSTORE_ENDPOINT);
+    return given()
+        .baseUri(signer.getUrl())
+        .contentType(ContentType.JSON)
+        .body(body)
+        .post(KEYSTORE_ENDPOINT);
   }
 
   public Response callDeleteKeystores(final String body) {
-    return given().baseUri(signer.getUrl()).contentType(ContentType.JSON).body(body).delete(KEYSTORE_ENDPOINT);
+    return given()
+        .baseUri(signer.getUrl())
+        .contentType(ContentType.JSON)
+        .body(body)
+        .delete(KEYSTORE_ENDPOINT);
   }
 
   protected void createBlsKey(String keystorePath, String password) throws URISyntaxException {
-    final Path keystoreFile = Path.of(
-        new File(Resources.getResource(keystorePath).toURI()).getAbsolutePath()
-    );
+    final Path keystoreFile =
+        Path.of(new File(Resources.getResource(keystorePath).toURI()).getAbsolutePath());
     final KeyStoreData keyStoreData = KeyStoreLoader.loadFromFile(keystoreFile);
     final Bytes privateKey = KeyStore.decrypt(password, keyStoreData);
     createKeystoreYamlFile(privateKey.toHexString());
@@ -93,9 +109,8 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
   }
 
   protected String readFile(final String filePath) throws IOException, URISyntaxException {
-    final Path keystoreFile = Path.of(
-        new File(Resources.getResource(filePath).toURI()).getAbsolutePath()
-    );
+    final Path keystoreFile =
+        Path.of(new File(Resources.getResource(filePath).toURI()).getAbsolutePath());
     return Files.readString(keystoreFile);
   }
 

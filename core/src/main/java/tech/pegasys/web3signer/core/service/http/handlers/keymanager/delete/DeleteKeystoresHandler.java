@@ -1,12 +1,20 @@
+/*
+ * Copyright 2021 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.web3signer.core.service.http.handlers.keymanager.delete;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.vertx.core.Handler;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.api.RequestParameters;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
+import static tech.pegasys.web3signer.core.service.http.handlers.ContentTypes.JSON_UTF_8;
+
 import tech.pegasys.web3signer.core.signing.ArtifactSignerProvider;
 import tech.pegasys.web3signer.slashingprotection.SlashingProtection;
 
@@ -19,8 +27,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
-import static tech.pegasys.web3signer.core.service.http.handlers.ContentTypes.JSON_UTF_8;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.vertx.core.Handler;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.api.RequestParameters;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class DeleteKeystoresHandler implements Handler<RoutingContext> {
 
@@ -34,10 +47,11 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
   private final Optional<SlashingProtection> slashingProtection;
   private final ArtifactSignerProvider signerProvider;
 
-  public DeleteKeystoresHandler(final ObjectMapper objectMapper,
-                                final Path keystorePath,
-                                final Optional<SlashingProtection> slashingProtection,
-                                final ArtifactSignerProvider signerProvider) {
+  public DeleteKeystoresHandler(
+      final ObjectMapper objectMapper,
+      final Path keystorePath,
+      final Optional<SlashingProtection> slashingProtection,
+      final ArtifactSignerProvider signerProvider) {
     this.objectMapper = objectMapper;
     this.keystorePath = keystorePath;
     this.slashingProtection = slashingProtection;
@@ -65,13 +79,13 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
         // Delete corresponding keystore file
         // TODO inspect inside the file and match the pubkey
         final boolean deleted = Files.deleteIfExists(keystorePath.resolve(pubkey + ".yaml"));
-        results.add(new DeleteKeystoreResult(
-            deleted ? DeleteKeystoreStatus.DELETED : DeleteKeystoreStatus.NOT_FOUND,
-            ""));
+        results.add(
+            new DeleteKeystoreResult(
+                deleted ? DeleteKeystoreStatus.DELETED : DeleteKeystoreStatus.NOT_FOUND, ""));
       } catch (IOException e) {
-        results.add(new DeleteKeystoreResult(
-            DeleteKeystoreStatus.ERROR,
-            "Error deleting keystore file: " + e.getMessage()));
+        results.add(
+            new DeleteKeystoreResult(
+                DeleteKeystoreStatus.ERROR, "Error deleting keystore file: " + e.getMessage()));
       }
     }
 
@@ -89,14 +103,16 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
     }
 
     try {
-      context.response()
+      context
+          .response()
           .putHeader(CONTENT_TYPE, JSON_UTF_8)
           .setStatusCode(SUCCESS)
-          .end(objectMapper.writeValueAsString(new DeleteKeystoresResponse(results, slashingProtectionExport)));
+          .end(
+              objectMapper.writeValueAsString(
+                  new DeleteKeystoresResponse(results, slashingProtectionExport)));
     } catch (JsonProcessingException e) {
       context.fail(SERVER_ERROR, e);
     }
-
   }
 
   private DeleteKeystoresRequestBody parseRequestBody(final RequestParameters params)

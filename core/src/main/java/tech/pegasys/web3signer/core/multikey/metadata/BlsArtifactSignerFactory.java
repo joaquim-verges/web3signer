@@ -71,7 +71,7 @@ public class BlsArtifactSignerFactory extends AbstractArtifactSignerFactory {
   @Override
   public ArtifactSigner create(final FileKeyStoreMetadata fileKeyStoreMetadata) {
     try (final TimingContext ignored =
-             privateKeyRetrievalTimer.labels("file-keystore").startTimer()) {
+        privateKeyRetrievalTimer.labels("file-keystore").startTimer()) {
       return createKeystoreArtifact(fileKeyStoreMetadata);
     }
   }

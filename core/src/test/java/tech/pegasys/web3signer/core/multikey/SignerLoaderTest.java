@@ -57,10 +57,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class SignerLoaderTest {
   private static final ObjectMapper YAML_OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
-  @TempDir
-  Path configsDirectory;
-  @Mock
-  private SignerParser signerParser;
+  @TempDir Path configsDirectory;
+  @Mock private SignerParser signerParser;
 
   private static final String FILE_EXTENSION = "yaml";
   private static final String PUBLIC_KEY1 =

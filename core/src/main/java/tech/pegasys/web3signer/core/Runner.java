@@ -12,25 +12,9 @@
  */
 package tech.pegasys.web3signer.core;
 
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
-import io.vertx.core.http.ClientAuth;
-import io.vertx.core.http.HttpServer;
-import io.vertx.core.http.HttpServerOptions;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.metrics.MetricsOptions;
-import io.vertx.core.net.PfxOptions;
-import io.vertx.ext.web.Router;
-import io.vertx.ext.web.api.contract.openapi3.OpenAPI3RouterFactory;
-import io.vertx.ext.web.handler.LoggerFormat;
-import io.vertx.ext.web.handler.LoggerHandler;
-import io.vertx.ext.web.impl.BlockingHandlerDecorator;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.tuweni.net.tls.VertxTrustOptions;
-import org.hyperledger.besu.plugin.services.MetricsSystem;
+import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.UPCHECK;
+import static tech.pegasys.web3signer.core.service.http.metrics.HttpApiMetrics.incSignerLoadCount;
+
 import tech.pegasys.web3signer.core.config.ClientAuthConstraints;
 import tech.pegasys.web3signer.core.config.Config;
 import tech.pegasys.web3signer.core.config.TlsOptions;
@@ -57,8 +41,25 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.UPCHECK;
-import static tech.pegasys.web3signer.core.service.http.metrics.HttpApiMetrics.incSignerLoadCount;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.http.ClientAuth;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.metrics.MetricsOptions;
+import io.vertx.core.net.PfxOptions;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.api.contract.openapi3.OpenAPI3RouterFactory;
+import io.vertx.ext.web.handler.LoggerFormat;
+import io.vertx.ext.web.handler.LoggerHandler;
+import io.vertx.ext.web.impl.BlockingHandlerDecorator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.tuweni.net.tls.VertxTrustOptions;
+import org.hyperledger.besu.plugin.services.MetricsSystem;
 
 public abstract class Runner implements Runnable {
 
@@ -119,17 +120,17 @@ public abstract class Runner implements Runnable {
       final OpenAPI3RouterFactory routerFactory =
           getOpenAPI3RouterFactory(vertx, openApiSpec.toString());
 
-      routerFactory.addSecurityHandler("bearerAuth", context -> {
-        // TODO JWT/API token security logic
-        final boolean autorized = true;
-        if (autorized) {
-          context.next();
-        } else {
-          context.response()
-              .setStatusCode(401)
-              .end("{ message: \"permission denied\" }");
-        }
-      });
+      routerFactory.addSecurityHandler(
+          "bearerAuth",
+          context -> {
+            // TODO JWT/API token security logic
+            final boolean autorized = true;
+            if (autorized) {
+              context.next();
+            } else {
+              context.response().setStatusCode(401).end("{ message: \"permission denied\" }");
+            }
+          });
       // register access log handler first
       if (config.isAccessLogsEnabled()) {
         routerFactory.addGlobalHandler(LoggerHandler.create(LoggerFormat.DEFAULT));
