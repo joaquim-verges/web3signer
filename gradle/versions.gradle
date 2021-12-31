@@ -88,7 +88,7 @@ dependencyManagement {
       entry 'async'
     }
 
-    dependency 'tech.pegasys:jblst:0.3.3-1'
+    dependency 'tech.pegasys:jblst:0.3.6-4'
 
     dependencySet(group: 'tech.pegasys.signers.internal', version: '1.0.19') {
       entry 'bls-keystore'

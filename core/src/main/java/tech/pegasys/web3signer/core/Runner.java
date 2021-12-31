@@ -12,9 +12,27 @@
  */
 package tech.pegasys.web3signer.core;
 
-import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.UPCHECK;
-import static tech.pegasys.web3signer.core.service.http.metrics.HttpApiMetrics.incSignerLoadCount;
-
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.http.ClientAuth;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.metrics.MetricsOptions;
+import io.vertx.core.net.PfxOptions;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.api.contract.openapi3.OpenAPI3RouterFactory;
+import io.vertx.ext.web.handler.CorsHandler;
+import io.vertx.ext.web.handler.LoggerFormat;
+import io.vertx.ext.web.handler.LoggerHandler;
+import io.vertx.ext.web.impl.BlockingHandlerDecorator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.tuweni.net.tls.VertxTrustOptions;
+import org.hyperledger.besu.plugin.services.MetricsSystem;
 import tech.pegasys.web3signer.core.config.ClientAuthConstraints;
 import tech.pegasys.web3signer.core.config.Config;
 import tech.pegasys.web3signer.core.config.TlsOptions;
@@ -37,29 +55,13 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
-import io.vertx.core.http.ClientAuth;
-import io.vertx.core.http.HttpServer;
-import io.vertx.core.http.HttpServerOptions;
-import io.vertx.core.http.HttpServerRequest;
-import io.vertx.core.metrics.MetricsOptions;
-import io.vertx.core.net.PfxOptions;
-import io.vertx.ext.web.Router;
-import io.vertx.ext.web.api.contract.openapi3.OpenAPI3RouterFactory;
-import io.vertx.ext.web.handler.LoggerFormat;
-import io.vertx.ext.web.handler.LoggerHandler;
-import io.vertx.ext.web.impl.BlockingHandlerDecorator;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.tuweni.net.tls.VertxTrustOptions;
-import org.hyperledger.besu.plugin.services.MetricsSystem;
+import static tech.pegasys.web3signer.core.service.http.OpenApiOperationsId.UPCHECK;
+import static tech.pegasys.web3signer.core.service.http.metrics.HttpApiMetrics.incSignerLoadCount;
 
 public abstract class Runner implements Runnable {
 
@@ -131,6 +133,18 @@ public abstract class Runner implements Runnable {
               context.response().setStatusCode(401).end("{ message: \"permission denied\" }");
             }
           });
+      
+      routerFactory.addGlobalHandler(
+              CorsHandler.create(".*.")
+              .allowedMethods(Set.of(HttpMethod.OPTIONS, HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE))
+                      .allowCredentials(true)
+                      .allowedHeader("Access-Control-Request-Method")
+              .allowedHeader("Access-Control-Allow-Credentials")
+              .allowedHeader("Access-Control-Allow-Origin")
+              .allowedHeader("Access-Control-Allow-Headers")
+              .allowedHeader("Content-Type")
+      );
+
       // register access log handler first
       if (config.isAccessLogsEnabled()) {
         routerFactory.addGlobalHandler(LoggerHandler.create(LoggerFormat.DEFAULT));
