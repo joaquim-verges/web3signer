@@ -133,7 +133,7 @@ public abstract class Runner implements Runnable {
               context.response().setStatusCode(401).end("{ message: \"permission denied\" }");
             }
           });
-      
+
       routerFactory.addGlobalHandler(
               CorsHandler.create(".*.")
               .allowedMethods(Set.of(HttpMethod.OPTIONS, HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE))

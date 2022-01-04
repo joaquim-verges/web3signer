@@ -53,7 +53,7 @@ public class ImportKeystoresAcceptanceTest extends KeyManagerTestBase {
         .contentType(ContentType.JSON)
         .assertThat()
         .statusCode(200)
-        .body("data.status", hasItem("IMPORTED"));
+        .body("data.status", hasItem("imported"));
   }
 
   @Test
@@ -69,7 +69,7 @@ public class ImportKeystoresAcceptanceTest extends KeyManagerTestBase {
         .contentType(ContentType.JSON)
         .assertThat()
         .statusCode(200)
-        .body("data.status", hasItem("DUPLICATE"));
+        .body("data.status", hasItem("duplicate"));
 
     assertThat(signer.listPublicKeys(KeyType.BLS).size()).isEqualTo(1);
   }
@@ -81,6 +81,7 @@ public class ImportKeystoresAcceptanceTest extends KeyManagerTestBase {
 
     callImportKeystores(composeRequestBody()).then().statusCode(200);
 
+    validateApiResponse(callListKeys(), "data.validating_pubkey", hasItem(PUBLIC_KEY));
     assertThat(signer.listPublicKeys(KeyType.BLS).size()).isEqualTo(1);
     assertThat(signer.listPublicKeys(KeyType.BLS).get(0)).isEqualTo(PUBLIC_KEY);
   }
@@ -93,26 +94,15 @@ public class ImportKeystoresAcceptanceTest extends KeyManagerTestBase {
         jdbi.withHandle(h -> h.select("SELECT * from validators").mapToMap().list());
     assertThat(validatorsBefore).hasSize(0);
 
+    // call import with one keystore but 2 pubkeys in the slashing data
     callImportKeystores(composeRequestBody()).then().statusCode(200);
     final List<Map<String, Object>> validatorsAfter =
         jdbi.withHandle(h -> h.select("SELECT * from validators").mapToMap().list());
+
+    // assert that only one pubkey got inserted
     assertThat(validatorsAfter).hasSize(1);
     assertThat(validatorsAfter.get(0).get("public_key"))
         .isEqualTo(Bytes.fromHexString(PUBLIC_KEY).toArray());
-  }
-
-  @Test
-  public void importingAnExistingKeyDoesntImportSlashingData()
-      throws IOException, URISyntaxException {
-    // start with a loaded key and no slashing data
-    createBlsKey("eth2/bls_keystore.json", "somepassword");
-    setupSignerWithKeyManagerApi();
-    final Jdbi jdbi = Jdbi.create(signer.getSlashingDbUrl(), DB_USERNAME, DB_PASSWORD);
-    // import the same key that was already loaded
-    callImportKeystores(composeRequestBody()).then().statusCode(200);
-    final List<Map<String, Object>> validators =
-        jdbi.withHandle(h -> h.select("SELECT * from validators").mapToMap().list());
-    assertThat(validators).hasSize(0);
   }
 
   @Test
@@ -137,7 +127,7 @@ public class ImportKeystoresAcceptanceTest extends KeyManagerTestBase {
   private String composeRequestBody() throws IOException, URISyntaxException {
     String keystoreData = readFile("eth2/bls_keystore.json");
     String password = "somepassword";
-    String slashingProtectionData = readFile("slashing/slashingImport.json");
+    String slashingProtectionData = readFile("slashing/slashingImport_two_entries.json");
     final JsonObject requestBody =
         new JsonObject()
             .put("keystores", new JsonArray().add(keystoreData))

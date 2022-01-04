@@ -23,7 +23,7 @@ public class ImportKeystoresRequestBody {
   private final String slashingProtection;
 
   @JsonCreator
-  ImportKeystoresRequestBody(
+  public ImportKeystoresRequestBody(
       @JsonProperty("keystores") final List<String> keystores,
       @JsonProperty("passwords") final List<String> passwords,
       @JsonProperty("slashing_protection") final String slashingProtection) {
