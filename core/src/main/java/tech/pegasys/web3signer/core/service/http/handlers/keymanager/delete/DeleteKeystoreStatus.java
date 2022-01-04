@@ -12,9 +12,15 @@
  */
 package tech.pegasys.web3signer.core.service.http.handlers.keymanager.delete;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public enum DeleteKeystoreStatus {
+  @JsonProperty("deleted")
   DELETED,
+  @JsonProperty("not_active")
   NOT_ACTIVE,
+  @JsonProperty("not_found")
   NOT_FOUND,
+  @JsonProperty("error")
   ERROR
 }

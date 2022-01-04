@@ -15,6 +15,7 @@ package tech.pegasys.web3signer.core.service.http.handlers.keymanager.delete;
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
 import static tech.pegasys.web3signer.core.service.http.handlers.ContentTypes.JSON_UTF_8;
 
+import io.vertx.core.json.JsonObject;
 import tech.pegasys.web3signer.core.signing.ArtifactSignerProvider;
 import tech.pegasys.web3signer.slashingprotection.SlashingProtection;
 
@@ -26,6 +27,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -69,7 +71,14 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
       return;
     }
 
-    List<String> pubkeysToDelete = parsedBody.getPubkeys();
+    final List<String> pubkeysToDelete = new ArrayList<>();
+      pubkeysToDelete.addAll(
+          parsedBody.getPubkeys().stream()
+                  .map(key -> key.startsWith("0x")
+                                          ? key
+                                          : "0x" + key) // always use 0x prefix for comparisons
+                  .collect(Collectors.toList()));
+
     List<DeleteKeystoreResult> results = new ArrayList<>();
     for (String pubkey : pubkeysToDelete) {
       try {
