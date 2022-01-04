@@ -135,9 +135,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
         final InputStream slashingProtectionData =
             new ByteArrayInputStream(
                 parsedBody.getSlashingProtection().getBytes(StandardCharsets.UTF_8));
-        slashingProtection
-            .get()
-            .importDataWithFilter(slashingProtectionData, Optional.of(pubkeysToImport));
+        slashingProtection.get().importDataWithFilter(slashingProtectionData, pubkeysToImport);
       } catch (Exception e) {
         context.fail(BAD_REQUEST, e);
         return;
@@ -160,16 +158,14 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
           // 1. validate and decrypt the keystore
           final BlsArtifactSigner signer = validateKeystore(jsonKeystoreData, password);
           // 2. write keystore file to disk
-          createKeyStoreYamlFileAt(pubkey, jsonKeystoreData, password, KeyType.BLS);
-          // 3. add result to API response
-          results.add(new ImportKeystoreResult(ImportKeystoreStatus.IMPORTED, null));
-          // 4. Finally, add the new signer to the provider to make it available for signing
+          createKeyStoreYamlFileAt(pubkey, jsonKeystoreData, password);
+          // 3. add the new signer to the provider to make it available for signing
           artifactSignerProvider.addSigner(pubkey, signer).get();
+          // 4. finally, add result to API response
+          results.add(new ImportKeystoreResult(ImportKeystoreStatus.IMPORTED, null));
         }
       } catch (Exception e) {
-        final List<String> toCleanup = new ArrayList<>();
-        toCleanup.add(pubkey);
-        cleanupImportedKeystoreFiles(toCleanup);
+        removeSignersAndCleanupImportedKeystoreFiles(List.of(pubkey));
         results.add(
             new ImportKeystoreResult(
                 ImportKeystoreStatus.ERROR, "Error importing keystore: " + e.getMessage()));
@@ -183,7 +179,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
           .setStatusCode(SUCCESS)
           .end(objectMapper.writeValueAsString(new ImportKeystoresResponse(results)));
     } catch (Exception e) {
-      cleanupImportedKeystoreFiles(pubkeysToImport);
+      removeSignersAndCleanupImportedKeystoreFiles(pubkeysToImport);
       context.fail(SERVER_ERROR, e);
     }
   }
@@ -209,10 +205,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
   }
 
   public void createKeyStoreYamlFileAt(
-      final String fileName,
-      final String jsonKeystoreData,
-      final String password,
-      final KeyType keyType)
+      final String fileName, final String jsonKeystoreData, final String password)
       throws IOException {
 
     final Path yamlFile = keystorePath.resolve(fileName + ".yaml");
@@ -240,11 +233,12 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
     YAML_OBJECT_MAPPER.writeValue(filePath.toFile(), signingMetadata);
   }
 
-  private void cleanupImportedKeystoreFiles(final List<String> pubkeys) {
+  private void removeSignersAndCleanupImportedKeystoreFiles(final List<String> pubkeys) {
     for (String pubkey : pubkeys) {
       try {
+        artifactSignerProvider.removeSigner(pubkey).get();
         Files.deleteIfExists(keystorePath.resolve(pubkey + ".yaml"));
-      } catch (IOException e) {
+      } catch (Exception e) {
         LOG.error("Failed to cleanup imported keystore file for key: " + pubkey);
       }
     }

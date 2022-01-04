@@ -27,8 +27,8 @@ public interface ArtifactSignerProvider extends Closeable {
 
   Future<Void> addSigner(final String identifier, final ArtifactSigner signer);
 
+  Future<Void> removeSigner(final String identifier);
+
   @Override
   void close();
-
-  void removeSigner(final String identifier);
 }
