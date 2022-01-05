@@ -139,10 +139,11 @@ public abstract class Runner implements Runnable {
               .allowedMethods(Set.of(HttpMethod.OPTIONS, HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE))
                       .allowCredentials(true)
                       .allowedHeader("Access-Control-Request-Method")
-              .allowedHeader("Access-Control-Allow-Credentials")
-              .allowedHeader("Access-Control-Allow-Origin")
-              .allowedHeader("Access-Control-Allow-Headers")
-              .allowedHeader("Content-Type")
+                      .allowedHeader("Access-Control-Allow-Credentials")
+                      .allowedHeader("Access-Control-Allow-Origin")
+                      .allowedHeader("Access-Control-Allow-Headers")
+                      .allowedHeader("Content-Type")
+                      .allowedHeader("Authorization")
       );
 
       // register access log handler first
