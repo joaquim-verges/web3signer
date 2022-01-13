@@ -19,6 +19,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.api.RequestParameters;
+import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.tuweni.bytes.Bytes;
@@ -38,15 +39,12 @@ import tech.pegasys.web3signer.slashingprotection.SlashingProtection;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -129,20 +127,30 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
       return;
     }
 
-    // read slashing protection data if present and import data matching keys to import only
-    if (slashingProtection.isPresent()) {
+    // load existing keys
+    final Set<String> existingPubkeys = artifactSignerProvider.availableIdentifiers();
+
+    // filter out already loaded keys for slashing data import
+    final List<String> nonLoadedPubkeys =
+        pubkeysToImport.stream()
+            .filter(key -> !existingPubkeys.contains(key))
+            .collect(Collectors.toList());
+
+    // read slashing protection data if present and import data matching non-loaded keys to import
+    // only
+    if (slashingProtection.isPresent()
+        && !StringUtils.isEmpty(parsedBody.getSlashingProtection())) {
       try {
         final InputStream slashingProtectionData =
             new ByteArrayInputStream(
                 parsedBody.getSlashingProtection().getBytes(StandardCharsets.UTF_8));
-        slashingProtection.get().importDataWithFilter(slashingProtectionData, pubkeysToImport);
+        slashingProtection.get().importDataWithFilter(slashingProtectionData, nonLoadedPubkeys);
       } catch (Exception e) {
         context.fail(BAD_REQUEST, e);
         return;
       }
     }
 
-    final Set<String> existingPubkeys = artifactSignerProvider.availableIdentifiers();
     final List<ImportKeystoreResult> results = new ArrayList<>();
     for (int i = 0; i < parsedBody.getKeystores().size(); i++) {
       final String pubkey = pubkeysToImport.get(i);
@@ -156,15 +164,17 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
         } else {
           // new keystore to import
           // 1. validate and decrypt the keystore
-          final BlsArtifactSigner signer = validateKeystore(jsonKeystoreData, password);
+          final BlsArtifactSigner signer =
+              decryptKeystoreAndCreateSigner(jsonKeystoreData, password);
           // 2. write keystore file to disk
           createKeyStoreYamlFileAt(pubkey, jsonKeystoreData, password);
           // 3. add the new signer to the provider to make it available for signing
-          artifactSignerProvider.addSigner(pubkey, signer).get();
+          artifactSignerProvider.addSigner(signer).get();
           // 4. finally, add result to API response
           results.add(new ImportKeystoreResult(ImportKeystoreStatus.IMPORTED, null));
         }
       } catch (Exception e) {
+        // cleanup the current key being processed and continue
         removeSignersAndCleanupImportedKeystoreFiles(List.of(pubkey));
         results.add(
             new ImportKeystoreResult(
@@ -184,7 +194,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
     }
   }
 
-  private BlsArtifactSigner validateKeystore(String jsonKeystoreData, String password)
+  private BlsArtifactSigner decryptKeystoreAndCreateSigner(String jsonKeystoreData, String password)
       throws JsonProcessingException, KeyStoreValidationException {
     final KeyStoreData keyStoreData = objectMapper.readValue(jsonKeystoreData, KeyStoreData.class);
     final Bytes privateKey = KeyStore.decrypt(password, keyStoreData);

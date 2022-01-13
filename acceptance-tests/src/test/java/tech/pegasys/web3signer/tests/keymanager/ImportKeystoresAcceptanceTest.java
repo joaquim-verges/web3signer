@@ -13,8 +13,10 @@
 package tech.pegasys.web3signer.tests.keymanager;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.hasItem;
 
+import tech.pegasys.web3signer.core.service.http.SigningObjectMapperFactory;
 import tech.pegasys.web3signer.core.service.http.handlers.keymanager.imports.ImportKeystoresRequestBody;
 import tech.pegasys.web3signer.core.signing.KeyType;
 
@@ -45,7 +47,22 @@ public class ImportKeystoresAcceptanceTest extends KeyManagerTestBase {
   }
 
   @Test
-  public void validRequestBodyReturnsSuccess() throws IOException, URISyntaxException {
+  public void mismatchKeysAndPasswordsReturnsError() throws IOException, URISyntaxException {
+    setupSignerWithKeyManagerApi();
+    final Response response = callImportKeystores(composeMismatchedRequestBody());
+    response.then().assertThat().statusCode(400);
+  }
+
+  @Test
+  public void emptyKeystoresReturnSuccess() {
+    setupSignerWithKeyManagerApi();
+    final Response response = callImportKeystores("{\"keystores\": [], \"passwords\": [] }");
+    response.then().assertThat().statusCode(200);
+  }
+
+  @Test
+  public void validRequestBodyWithSlashingdataReturnsSuccess()
+      throws IOException, URISyntaxException {
     setupSignerWithKeyManagerApi();
     final Response response = callImportKeystores(composeRequestBody());
     response
@@ -54,6 +71,47 @@ public class ImportKeystoresAcceptanceTest extends KeyManagerTestBase {
         .assertThat()
         .statusCode(200)
         .body("data.status", hasItem("imported"));
+  }
+
+  @Test
+  public void validRequestBodyWithWrongPasswordReturnsErrorResult()
+      throws IOException, URISyntaxException {
+    setupSignerWithKeyManagerApi();
+    final Response response = callImportKeystores(composeRequestBodyWrongPassword());
+    response
+        .then()
+        .contentType(ContentType.JSON)
+        .assertThat()
+        .statusCode(200)
+        .body("data.status", hasItem("error"));
+  }
+
+  @Test
+  public void validRequestBodyNoSlashingdataReturnsImported()
+      throws IOException, URISyntaxException {
+    setupSignerWithKeyManagerApi();
+    final Response response = callImportKeystores(composeRequestBodyNoSlashingData());
+    response
+        .then()
+        .contentType(ContentType.JSON)
+        .assertThat()
+        .statusCode(200)
+        .body("data.status", hasItem("imported"));
+  }
+
+  @Test
+  public void oneValidKeyOneInvalidKeyReturnsImportedAndError()
+      throws IOException, URISyntaxException {
+    setupSignerWithKeyManagerApi();
+    final Response response = callImportKeystores(composeRequestBodyTwoKeysOneInvalid());
+    response
+        .then()
+        .contentType(ContentType.JSON)
+        .assertThat()
+        .statusCode(200)
+        .body("data[0].status", is("imported"))
+        .and()
+        .body("data[1].status", is("error"));
   }
 
   @Test
@@ -79,7 +137,12 @@ public class ImportKeystoresAcceptanceTest extends KeyManagerTestBase {
     setupSignerWithKeyManagerApi();
     assertThat(signer.listPublicKeys(KeyType.BLS).size()).isEqualTo(0);
 
-    callImportKeystores(composeRequestBody()).then().statusCode(200);
+    callImportKeystores(composeRequestBody())
+        .then()
+        .contentType(ContentType.JSON)
+        .assertThat()
+        .statusCode(200)
+        .body("data.status", hasItem("imported"));
 
     validateApiResponse(callListKeys(), "data.validating_pubkey", hasItem(PUBLIC_KEY));
     assertThat(signer.listPublicKeys(KeyType.BLS).size()).isEqualTo(1);
@@ -107,7 +170,7 @@ public class ImportKeystoresAcceptanceTest extends KeyManagerTestBase {
 
   @Test
   public void testRequestBodyParsing() throws IOException, URISyntaxException {
-    final ObjectMapper objectMapper = new ObjectMapper();
+    final ObjectMapper objectMapper = SigningObjectMapperFactory.createObjectMapper();
     final ImportKeystoresRequestBody parsedBody =
         objectMapper.readValue(composeRequestBody(), ImportKeystoresRequestBody.class);
     assertThat(new JsonObject(parsedBody.getKeystores().get(0)).getInteger("version")).isEqualTo(4);
@@ -133,6 +196,49 @@ public class ImportKeystoresAcceptanceTest extends KeyManagerTestBase {
             .put("keystores", new JsonArray().add(keystoreData))
             .put("passwords", new JsonArray().add(password))
             .put("slashing_protection", slashingProtectionData);
+    return requestBody.toString();
+  }
+
+  private String composeRequestBodyNoSlashingData() throws IOException, URISyntaxException {
+    String keystoreData = readFile("eth2/bls_keystore.json");
+    String password = "somepassword";
+    final JsonObject requestBody =
+        new JsonObject()
+            .put("keystores", new JsonArray().add(keystoreData))
+            .put("passwords", new JsonArray().add(password));
+    return requestBody.toString();
+  }
+
+  private String composeRequestBodyTwoKeysOneInvalid() throws IOException, URISyntaxException {
+    String keystoreData = readFile("eth2/bls_keystore.json");
+    String keystoreData2 = readFile("eth2/bls_keystore_2.json");
+    String password = "somepassword";
+    String password2 = "wrongpassord";
+    final JsonObject requestBody =
+        new JsonObject()
+            .put("keystores", new JsonArray().add(keystoreData).add(keystoreData2))
+            .put("passwords", new JsonArray().add(password).add(password2));
+    return requestBody.toString();
+  }
+
+  private String composeMismatchedRequestBody() throws IOException, URISyntaxException {
+    String keystoreData = readFile("eth2/bls_keystore.json");
+    String password = "somepassword";
+    String otherPassword = "someOtherPassword";
+    final JsonObject requestBody =
+        new JsonObject()
+            .put("keystores", new JsonArray().add(keystoreData))
+            .put("passwords", new JsonArray().add(password).add(otherPassword));
+    return requestBody.toString();
+  }
+
+  private String composeRequestBodyWrongPassword() throws IOException, URISyntaxException {
+    String keystoreData = readFile("eth2/bls_keystore.json");
+    String password = "wrongpassword";
+    final JsonObject requestBody =
+        new JsonObject()
+            .put("keystores", new JsonArray().add(keystoreData))
+            .put("passwords", new JsonArray().add(password));
     return requestBody.toString();
   }
 }
