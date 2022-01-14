@@ -30,35 +30,35 @@ import org.junit.jupiter.api.Test;
 public class DeleteKeystoresAcceptanceTest extends KeyManagerTestBase {
 
   @Test
-  public void invalidRequestBodyReturnsError() {
-    setupSignerWithKeyManagerApi();
+  public void invalidRequestBodyReturnsError() throws URISyntaxException {
+    setupSignerWithKeyManagerApi(true);
     final Response response = callDeleteKeystores("{\"invalid\": \"json body\"}");
     response.then().assertThat().statusCode(400);
   }
 
   @Test
-  public void deletingNonExistingKeyReturnNotFound() {
-    setupSignerWithKeyManagerApi();
+  public void deletingNonExistingKeyReturnNotFound() throws URISyntaxException {
+    setupSignerWithKeyManagerApi(true);
     final Response response = callDeleteKeystores(composeRequestBody());
     response
         .then()
         .contentType(ContentType.JSON)
         .assertThat()
         .statusCode(200)
-        .body("data.status", hasItem("NOT_FOUND"));
+        .body("data.status", hasItem("not_found"));
   }
 
   @Test
   public void deletingExistingKeyReturnDeleted() throws URISyntaxException {
     createBlsKey("eth2/bls_keystore.json", "somepassword");
-    setupSignerWithKeyManagerApi();
+    setupSignerWithKeyManagerApi(true);
     final Response response = callDeleteKeystores(composeRequestBody());
     response
         .then()
         .contentType(ContentType.JSON)
         .assertThat()
         .statusCode(200)
-        .body("data.status", hasItem("DELETED"));
+        .body("data.status", hasItem("deleted"));
   }
 
   // TODO slashing protection related tests

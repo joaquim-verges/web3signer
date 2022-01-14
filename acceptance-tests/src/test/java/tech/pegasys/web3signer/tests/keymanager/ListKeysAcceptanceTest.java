@@ -22,6 +22,8 @@ import io.restassured.http.ContentType;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
+import java.net.URISyntaxException;
+
 public class ListKeysAcceptanceTest extends KeyManagerTestBase {
   private static final String BLS_PRIVATE_KEY_1 =
       "3ee2224386c82ffea477e2adf28a2929f5c349165a4196158c7f3a2ecca40f35";
@@ -29,27 +31,27 @@ public class ListKeysAcceptanceTest extends KeyManagerTestBase {
       "32ae313afff2daa2ef7005a7f834bdf291855608fe82c24d30be6ac2017093a8";
 
   @Test
-  public void noLoadedKeysReturnsEmptyPublicKeyResponse() {
+  public void noLoadedKeysReturnsEmptyPublicKeyResponse() throws URISyntaxException {
     setupSignerWithKeyManagerApi();
     validateApiResponse(callListKeys(), "data", empty());
   }
 
   @Test
-  public void loadedKeysAreReturnedInPublicKeyResponse() {
+  public void loadedKeysAreReturnedInPublicKeyResponse() throws URISyntaxException {
     final String pubkey = createKeystoreYamlFile(BLS_PRIVATE_KEY_1);
     setupSignerWithKeyManagerApi();
     validateApiResponse(callListKeys(), "data.validating_pubkey", hasItem(pubkey));
   }
 
   @Test
-  public void pathIsReturnedForKeystoreFiles() {
+  public void pathIsReturnedForKeystoreFiles() throws URISyntaxException {
     createKeystoreYamlFile(BLS_PRIVATE_KEY_1);
     setupSignerWithKeyManagerApi();
     validateApiResponse(callListKeys(), "data.derivation_path", hasItem("m/12381/3600/0/0/0"));
   }
 
   @Test
-  public void additionalPublicKeyAreReportedAfterReload() {
+  public void additionalPublicKeyAreReportedAfterReload() throws URISyntaxException {
     final String firstPubKey = createKeystoreYamlFile(BLS_PRIVATE_KEY_1);
     setupSignerWithKeyManagerApi();
     validateApiResponse(callListKeys(), "data.validating_pubkey", hasItem(firstPubKey));
@@ -67,14 +69,14 @@ public class ListKeysAcceptanceTest extends KeyManagerTestBase {
   }
 
   @Test
-  public void nonKeystoreKeysAreReadOnly() {
+  public void nonKeystoreKeysAreReadOnly() throws URISyntaxException {
     createRawPrivateKeyFile(BLS_PRIVATE_KEY_1);
     setupSignerWithKeyManagerApi();
     validateApiResponse(callListKeys(), "data.readonly", hasItems(true));
   }
 
   @Test
-  public void canReturnBothReadOnlyAndEditableKeystores() {
+  public void canReturnBothReadOnlyAndEditableKeystores() throws URISyntaxException {
     final String firstPubkey = createKeystoreYamlFile(BLS_PRIVATE_KEY_1);
     final String secondPubKey = createRawPrivateKeyFile(BLS_PRIVATE_KEY_2);
     setupSignerWithKeyManagerApi();

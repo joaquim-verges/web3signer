@@ -13,7 +13,9 @@
 package tech.pegasys.web3signer.tests.keymanager;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static tech.pegasys.web3signer.core.signing.KeyType.BLS;
+import static tech.pegasys.web3signer.dsl.utils.WaitUtils.waitFor;
 
 import tech.pegasys.signers.bls.keystore.KeyStore;
 import tech.pegasys.signers.bls.keystore.KeyStoreLoader;
@@ -22,6 +24,7 @@ import tech.pegasys.signers.bls.keystore.model.KeyStoreData;
 import tech.pegasys.teku.bls.BLSKeyPair;
 import tech.pegasys.teku.bls.BLSPublicKey;
 import tech.pegasys.teku.bls.BLSSecretKey;
+import tech.pegasys.web3signer.dsl.signer.Signer;
 import tech.pegasys.web3signer.dsl.signer.SignerConfigurationBuilder;
 import tech.pegasys.web3signer.dsl.utils.MetadataFileHelpers;
 import tech.pegasys.web3signer.tests.AcceptanceTestBase;
@@ -48,9 +51,14 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
   public static final String DB_PASSWORD = "postgres";
   protected static final MetadataFileHelpers metadataFileHelpers = new MetadataFileHelpers();
 
-  @TempDir protected Path testDirectory;
+  @TempDir
+  protected Path testDirectory;
 
-  protected void setupSignerWithKeyManagerApi() {
+  protected void setupSignerWithKeyManagerApi() throws URISyntaxException {
+    setupSignerWithKeyManagerApi(false);
+  }
+
+  protected void setupSignerWithKeyManagerApi(final boolean insertSlashingProtectionData) throws URISyntaxException {
     final SignerConfigurationBuilder builder = new SignerConfigurationBuilder();
     builder
         .withKeyStoreDirectory(testDirectory)
@@ -63,6 +71,22 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
     startSigner(builder.build());
     final Jdbi jdbi = Jdbi.create(signer.getSlashingDbUrl(), DB_USERNAME, DB_PASSWORD);
     jdbi.withHandle(h -> h.execute("DELETE FROM validators"));
+
+    if (insertSlashingProtectionData) {
+      final SignerConfigurationBuilder importBuilder = new SignerConfigurationBuilder();
+      importBuilder.withMode("eth2")
+          .withSlashingEnabled(true)
+          .withSlashingProtectionDbUrl(signer.getSlashingDbUrl())
+          .withSlashingProtectionDbUsername(DB_USERNAME)
+          .withSlashingProtectionDbPassword(DB_PASSWORD)
+          .withKeyStoreDirectory(testDirectory)
+          .withSlashingImportPath(getResourcePath("slashing/slashingImport.json"))
+          .withHttpPort(12345); // prevent wait for Ports file in AT
+
+      final Signer importSigner = new Signer(importBuilder.build(), null);
+      importSigner.start();
+      waitFor(() -> assertThat(importSigner.isRunning()).isFalse());
+    }
   }
 
   public Response callListKeys() {
@@ -109,9 +133,12 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
   }
 
   protected String readFile(final String filePath) throws IOException, URISyntaxException {
-    final Path keystoreFile =
-        Path.of(new File(Resources.getResource(filePath).toURI()).getAbsolutePath());
+    final Path keystoreFile = getResourcePath(filePath);
     return Files.readString(keystoreFile);
+  }
+
+  protected Path getResourcePath(final String filePath) throws URISyntaxException {
+    return Path.of(new File(Resources.getResource(filePath).toURI()).getAbsolutePath());
   }
 
   protected String createRawPrivateKeyFile(final String privateKey) {
