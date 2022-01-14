@@ -12,6 +12,13 @@
  */
 package tech.pegasys.web3signer.slashingprotection.interchange;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.tuweni.bytes.Bytes32;
+import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.Jdbi;
 import tech.pegasys.web3signer.slashingprotection.dao.LowWatermarkDao;
 import tech.pegasys.web3signer.slashingprotection.dao.MetadataDao;
 import tech.pegasys.web3signer.slashingprotection.dao.SignedAttestationsDao;
@@ -24,15 +31,8 @@ import tech.pegasys.web3signer.slashingprotection.interchange.model.Metadata;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
+import java.util.List;
 import java.util.Optional;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.tuweni.bytes.Bytes32;
-import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
 
 public class InterchangeV5Exporter {
 
@@ -66,6 +66,15 @@ public class InterchangeV5Exporter {
   }
 
   public void export(final OutputStream out) throws IOException {
+    exportInternal(out, Optional.empty());
+  }
+
+
+  public void exportWithFilter(OutputStream out, List<String> pubkeys) throws IOException {
+    exportInternal(out, Optional.of(pubkeys));
+  }
+
+  private void exportInternal(final OutputStream out, final Optional<List<String>> pubkeys) throws IOException {
     try (final JsonGenerator jsonGenerator = mapper.getFactory().createGenerator(out)) {
       final Optional<Bytes32> gvr = jdbi.inTransaction(metadataDao::findGenesisValidatorsRoot);
       if (gvr.isEmpty()) {
@@ -80,14 +89,14 @@ public class InterchangeV5Exporter {
       mapper.writeValue(jsonGenerator, metadata);
 
       jsonGenerator.writeArrayFieldStart("data");
-      populateInterchangeData(jsonGenerator);
+      populateInterchangeData(jsonGenerator, pubkeys);
       jsonGenerator.writeEndArray();
 
       jsonGenerator.writeEndObject();
     }
   }
 
-  private void populateInterchangeData(final JsonGenerator jsonGenerator) {
+  private void populateInterchangeData(final JsonGenerator jsonGenerator, final Optional<List<String>> pubkeys) {
     jdbi.useTransaction(
         h ->
             validatorsDao
@@ -95,7 +104,7 @@ public class InterchangeV5Exporter {
                 .forEach(
                     validator -> {
                       try {
-                        populateValidatorRecord(h, validator, jsonGenerator);
+                        populateValidatorRecord(h, validator, jsonGenerator, pubkeys);
                       } catch (final IOException e) {
                         throw new UncheckedIOException(
                             "Failed to construct a validator entry in json", e);
@@ -104,8 +113,12 @@ public class InterchangeV5Exporter {
   }
 
   private void populateValidatorRecord(
-      final Handle handle, final Validator validator, final JsonGenerator jsonGenerator)
+      final Handle handle, final Validator validator, final JsonGenerator jsonGenerator, final Optional<List<String>> pubkeys)
       throws IOException {
+    if (pubkeys.isPresent() && !pubkeys.get().contains(validator.getPublicKey().toHexString())) {
+      LOG.info("Skipping data export for validator " + validator.getPublicKey().toHexString());
+      return;
+    }
     final Optional<SigningWatermark> watermark =
         lowWatermarkDao.findLowWatermarkForValidator(handle, validator.getId());
     if (watermark.isEmpty()) {
@@ -143,8 +156,8 @@ public class InterchangeV5Exporter {
                 if (block.getSlot().compareTo(watermark.getSlot()) >= 0) {
                   final tech.pegasys.web3signer.slashingprotection.interchange.model.SignedBlock
                       jsonBlock =
-                          new tech.pegasys.web3signer.slashingprotection.interchange.model
-                              .SignedBlock(block.getSlot(), block.getSigningRoot().orElse(null));
+                      new tech.pegasys.web3signer.slashingprotection.interchange.model
+                          .SignedBlock(block.getSlot(), block.getSigningRoot().orElse(null));
                   try {
                     mapper.writeValue(jsonGenerator, jsonBlock);
                   } catch (final IOException e) {
@@ -183,13 +196,13 @@ public class InterchangeV5Exporter {
                 if ((attestation.getSourceEpoch().compareTo(watermark.getSourceEpoch()) >= 0)
                     && (attestation.getTargetEpoch().compareTo(watermark.getTargetEpoch()) >= 0)) {
                   final tech.pegasys.web3signer.slashingprotection.interchange.model
-                          .SignedAttestation
+                      .SignedAttestation
                       jsonAttestation =
-                          new tech.pegasys.web3signer.slashingprotection.interchange.model
-                              .SignedAttestation(
-                              attestation.getSourceEpoch(),
-                              attestation.getTargetEpoch(),
-                              attestation.getSigningRoot().orElse(null));
+                      new tech.pegasys.web3signer.slashingprotection.interchange.model
+                          .SignedAttestation(
+                          attestation.getSourceEpoch(),
+                          attestation.getTargetEpoch(),
+                          attestation.getSigningRoot().orElse(null));
                   try {
                     mapper.writeValue(jsonGenerator, jsonAttestation);
                   } catch (final IOException e) {

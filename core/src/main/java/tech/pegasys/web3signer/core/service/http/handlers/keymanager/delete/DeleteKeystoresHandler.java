@@ -72,14 +72,15 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
     }
 
     final List<String> pubkeysToDelete = new ArrayList<>();
-      pubkeysToDelete.addAll(
-          parsedBody.getPubkeys().stream()
-                  .map(key -> key.startsWith("0x")
-                                          ? key
-                                          : "0x" + key) // always use 0x prefix for comparisons
-                  .collect(Collectors.toList()));
+    pubkeysToDelete.addAll(
+        parsedBody.getPubkeys().stream()
+            .map(key -> key.startsWith("0x")
+                ? key
+                : "0x" + key) // always use 0x prefix for comparisons
+            .collect(Collectors.toList()));
 
-    List<DeleteKeystoreResult> results = new ArrayList<>();
+    final List<DeleteKeystoreResult> results = new ArrayList<>();
+    final List<String> deletedKeys = new ArrayList<>();
     for (String pubkey : pubkeysToDelete) {
       try {
         // Remove key from memory
@@ -88,9 +89,14 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
         // Delete corresponding keystore file
         // TODO inspect inside the file and match the pubkey
         final boolean deleted = Files.deleteIfExists(keystorePath.resolve(pubkey + ".yaml"));
-        results.add(
-            new DeleteKeystoreResult(
-                deleted ? DeleteKeystoreStatus.DELETED : DeleteKeystoreStatus.NOT_FOUND, ""));
+        if (deleted) {
+          deletedKeys.add(pubkey);
+          results.add(
+              new DeleteKeystoreResult(DeleteKeystoreStatus.DELETED, ""));
+        } else {
+          results.add(
+              new DeleteKeystoreResult(DeleteKeystoreStatus.NOT_FOUND, ""));
+        }
       } catch (IOException e) {
         results.add(
             new DeleteKeystoreResult(
@@ -102,7 +108,7 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
     if (slashingProtection.isPresent()) {
       try {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        slashingProtection.get().export(outputStream);
+        slashingProtection.get().exportWithFilter(outputStream, deletedKeys);
         slashingProtectionExport = outputStream.toString(StandardCharsets.UTF_8);
       } catch (Exception e) {
         LOG.debug("Failed to export slashing data", e);

@@ -80,7 +80,7 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
           .withSlashingProtectionDbUsername(DB_USERNAME)
           .withSlashingProtectionDbPassword(DB_PASSWORD)
           .withKeyStoreDirectory(testDirectory)
-          .withSlashingImportPath(getResourcePath("slashing/slashingImport.json"))
+          .withSlashingImportPath(getResourcePath("slashing/slashingImport_two_entries.json"))
           .withHttpPort(12345); // prevent wait for Ports file in AT
 
       final Signer importSigner = new Signer(importBuilder.build(), null);

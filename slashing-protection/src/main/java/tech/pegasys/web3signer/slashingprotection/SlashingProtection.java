@@ -36,6 +36,8 @@ public interface SlashingProtection {
 
   void export(OutputStream output);
 
+  void exportWithFilter(OutputStream output, List<String> pubkeys);
+
   void importData(InputStream output);
 
   void importDataWithFilter(InputStream output, List<String> pubkeys);

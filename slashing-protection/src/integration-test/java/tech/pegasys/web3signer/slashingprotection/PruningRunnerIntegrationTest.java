@@ -226,6 +226,11 @@ public class PruningRunnerIntegrationTest extends IntegrationTestBase {
     }
 
     @Override
+    public void exportWithFilter(OutputStream output, List<String> pubkeys) {
+      delegate.exportWithFilter(output, pubkeys);
+    }
+
+    @Override
     public void importData(final InputStream output) {
       delegate.importData(output);
     }
