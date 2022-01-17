@@ -17,6 +17,7 @@ import static tech.pegasys.web3signer.core.service.http.handlers.ContentTypes.JS
 
 import io.vertx.core.json.JsonObject;
 import tech.pegasys.web3signer.core.signing.ArtifactSignerProvider;
+import tech.pegasys.web3signer.core.util.IdentifierUtils;
 import tech.pegasys.web3signer.slashingprotection.SlashingProtection;
 
 import java.io.ByteArrayOutputStream;
@@ -74,9 +75,7 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
     final List<String> pubkeysToDelete = new ArrayList<>();
     pubkeysToDelete.addAll(
         parsedBody.getPubkeys().stream()
-            .map(key -> key.startsWith("0x")
-                ? key
-                : "0x" + key) // always use 0x prefix for comparisons
+            .map(IdentifierUtils::normaliseIdentifier)
             .collect(Collectors.toList()));
 
     final List<DeleteKeystoreResult> results = new ArrayList<>();
@@ -85,7 +84,7 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
       try {
         // Remove key from memory
         // TODO check that other validators are not using this key as well?
-        signerProvider.removeSigner(pubkey);
+        signerProvider.removeSigner(pubkey).get();
         // Delete corresponding keystore file
         // TODO inspect inside the file and match the pubkey
         final boolean deleted = Files.deleteIfExists(keystorePath.resolve(pubkey + ".yaml"));
@@ -97,7 +96,7 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
           results.add(
               new DeleteKeystoreResult(DeleteKeystoreStatus.NOT_FOUND, ""));
         }
-      } catch (IOException e) {
+      } catch (Exception e) {
         results.add(
             new DeleteKeystoreResult(
                 DeleteKeystoreStatus.ERROR, "Error deleting keystore file: " + e.getMessage()));
