@@ -341,7 +341,8 @@ applicationDefaultJvmArgs = [
   "-Dvertx.disableFileCPResolving=true",
   // We shutdown log4j ourselves, as otherwise his shutdown hook runs before our own and whatever
   // happens during shutdown is not logged.
-  "-Dlog4j.shutdownHookEnabled=false"
+  "-Dlog4j.shutdownHookEnabled=false",
+  "-Dlog4j2.formatMsgNoLookups=true"
 ]
 
 run {
@@ -498,10 +499,52 @@ task dockerUpload {
         versionPrefixes.forEach { prefix -> tags += "-t ${dockerImageName}:${prefix.trim()} "}
       }
 
+      copy {
+        from file("${projectDir}/docker/${variant}/Dockerfile")
+        into(dockerBuildDir)
+      }
+
       exec {
         workingDir dockerBuildDir
         executable "sh"
         args "-c", "docker buildx build --platform ${dockerPlatforms} --build-arg BUILD_DATE=${buildTime()} --build-arg VERSION=${dockerBuildVersion} --build-arg VCS_REF=${getCheckedOutGitCommitHash()} --push ${tags} ."
+      }
+    }
+  }
+}
+
+task dockerContentTrust {
+  dependsOn([distDocker, dockerUpload])
+  def dockerBuildVersion = "${rootProject.version}".replace('+', '-')
+
+  def versionPrefixes = [dockerBuildVersion]
+  if (project.hasProperty('branch') && project.property('branch') == 'master') {
+    versionPrefixes.add('develop')
+  }
+
+  if (!isDevelopBuild) {
+    versionPrefixes.add('latest')
+    versionPrefixes.add(dockerBuildVersion.split(/\./)[0..1].join('.'))
+  }
+
+  doLast {
+    for (def variant in dockerVariants) {
+      def dctTags = []
+      versionPrefixes.forEach { prefix ->
+        dctTags.add("${dockerImageName}:${prefix.trim()}-${variant}")
+      }
+      if (variant == dockerVariants[0]) {
+        versionPrefixes.forEach { prefix ->
+          dctTags.add("${dockerImageName}:${prefix.trim()}")
+        }
+      }
+
+      for (def tag in dctTags) {
+        exec {
+          workingDir dockerBuildDir
+          executable "sh"
+          args "-c", "docker pull ${tag} && docker trust sign ${tag} "
+        }
       }
     }
   }

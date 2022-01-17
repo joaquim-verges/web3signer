@@ -1,6 +1,27 @@
 # Changelog
 
-## Next Release
+## 21.10.5
+### Bugs Fixed
+- Updated to log4j 2.17.1. Resolves two potential vulnerabilities which are only exploitable when using custom log4j configurations that are either writable by untrusted users or log data from the `ThreadContext`.
+
+---
+## 21.10.4
+### Bugs Fixed
+- Updated log4j to 2.17.0 to mitigate potential DOS vulnerability when the logging configuration uses a non-default Pattern Layout with a Context Lookup.
+
+---
+## 21.10.3
+
+### Bugs fixed
+- Updated log4j to 2.16.0 to mitigate JNDI attack via thread context. 
+---
+
+## 21.10.2
+
+### Bugs fixed
+- Fix multi-arch JDK17 variant docker image to bundle Java 17 instead of Java 11
+
+## 21.10.1
 
 ### Features Added
 - Docker images are now published with multi-arch support including Linux/amd64 and Linux/arm64
@@ -10,6 +31,7 @@
 - The docker image now uses `web3signer` as user/group instead of `root` which may result in compatibility/permissions issues with existing directory mounts.  
 
 ### Bugs Fixed
+- Updated log4j and explicitly disabled format message lookups.
 
 ---
 
