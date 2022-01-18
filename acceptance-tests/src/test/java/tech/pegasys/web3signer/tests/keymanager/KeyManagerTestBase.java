@@ -51,14 +51,14 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
   public static final String DB_PASSWORD = "postgres";
   protected static final MetadataFileHelpers metadataFileHelpers = new MetadataFileHelpers();
 
-  @TempDir
-  protected Path testDirectory;
+  @TempDir protected Path testDirectory;
 
   protected void setupSignerWithKeyManagerApi() throws URISyntaxException {
     setupSignerWithKeyManagerApi(false);
   }
 
-  protected void setupSignerWithKeyManagerApi(final boolean insertSlashingProtectionData) throws URISyntaxException {
+  protected void setupSignerWithKeyManagerApi(final boolean insertSlashingProtectionData)
+      throws URISyntaxException {
     final SignerConfigurationBuilder builder = new SignerConfigurationBuilder();
     builder
         .withKeyStoreDirectory(testDirectory)
@@ -74,7 +74,8 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
 
     if (insertSlashingProtectionData) {
       final SignerConfigurationBuilder importBuilder = new SignerConfigurationBuilder();
-      importBuilder.withMode("eth2")
+      importBuilder
+          .withMode("eth2")
           .withSlashingEnabled(true)
           .withSlashingProtectionDbUrl(signer.getSlashingDbUrl())
           .withSlashingProtectionDbUsername(DB_USERNAME)

@@ -65,7 +65,8 @@ public class InterchangeV5Manager implements InterchangeManager {
   }
 
   @Override
-  public void importDataWithFilter(final InputStream in, final List<String> pubkeys) throws IOException {
+  public void importDataWithFilter(final InputStream in, final List<String> pubkeys)
+      throws IOException {
     importer.importDataWithFilter(in, pubkeys);
   }
 
@@ -75,7 +76,8 @@ public class InterchangeV5Manager implements InterchangeManager {
   }
 
   @Override
-  public void exportWithFilter(final OutputStream out, final List<String> pubkeys) throws IOException {
+  public void exportWithFilter(final OutputStream out, final List<String> pubkeys)
+      throws IOException {
     exporter.exportWithFilter(out, pubkeys);
   }
 }

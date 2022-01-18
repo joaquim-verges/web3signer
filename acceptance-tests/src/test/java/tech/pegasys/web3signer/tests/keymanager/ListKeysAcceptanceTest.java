@@ -18,11 +18,11 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.is;
 
+import java.net.URISyntaxException;
+
 import io.restassured.http.ContentType;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
-
-import java.net.URISyntaxException;
 
 public class ListKeysAcceptanceTest extends KeyManagerTestBase {
   private static final String BLS_PRIVATE_KEY_1 =
