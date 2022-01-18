@@ -63,7 +63,8 @@ public class DeleteKeystoresAcceptanceTest extends KeyManagerTestBase {
   }
 
   @Test
-  public void deletingNonExistingKeyReturnNotFound() throws URISyntaxException, IOException {
+  public void deletingNonExistingKeyReturnNotFound() throws URISyntaxException {
+    createBlsKey("eth2/bls_keystore_2.json", "otherpassword");
     setupSignerWithKeyManagerApi(true);
     final Response response = callDeleteKeystores(composeRequestBody());
     response
@@ -89,7 +90,32 @@ public class DeleteKeystoresAcceptanceTest extends KeyManagerTestBase {
         .body("data[0].status", is("deleted"))
         .and()
         .body("slashing_protection", is(singleEntrySlashingData));
-    ;
+  }
+
+  @Test
+  public void deletingExistingTwiceReturnsNotActive() throws URISyntaxException {
+    createBlsKey("eth2/bls_keystore.json", "somepassword");
+    setupSignerWithKeyManagerApi(true);
+    final Response response = callDeleteKeystores(composeRequestBody());
+    response
+        .then()
+        .contentType(ContentType.JSON)
+        .assertThat()
+        .statusCode(200)
+        .body("data[0].status", is("deleted"))
+        .and()
+        .body("slashing_protection", is(singleEntrySlashingData));
+
+    // call API again with same key should return not_active with the same exported slashing protection data
+    final Response response2 = callDeleteKeystores(composeRequestBody());
+    response2
+        .then()
+        .contentType(ContentType.JSON)
+        .assertThat()
+        .statusCode(200)
+        .body("data[0].status", is("not_active"))
+        .and()
+        .body("slashing_protection", is(singleEntrySlashingData));
   }
 
   @Test

@@ -275,6 +275,11 @@ public class DbSlashingProtection implements SlashingProtection {
     LOG.info("Pruning slashing protection database complete");
   }
 
+  @Override
+  public boolean isRegisteredValidator(final Bytes publicKey) {
+    return registeredValidators.get(publicKey) != null;
+  }
+
   private int validatorId(final Bytes publicKey) {
     final Integer validatorId = registeredValidators.get(publicKey);
     if (validatorId == null) {

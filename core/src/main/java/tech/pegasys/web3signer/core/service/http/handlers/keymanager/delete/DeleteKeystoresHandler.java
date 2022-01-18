@@ -15,8 +15,15 @@ package tech.pegasys.web3signer.core.service.http.handlers.keymanager.delete;
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
 import static tech.pegasys.web3signer.core.service.http.handlers.ContentTypes.JSON_UTF_8;
 
-import io.vertx.core.json.JsonObject;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.tuweni.bytes.Bytes;
+import tech.pegasys.signers.bls.keystore.KeyStoreLoader;
+import tech.pegasys.signers.bls.keystore.model.KeyStoreData;
+import tech.pegasys.web3signer.core.multikey.metadata.FileKeyStoreMetadata;
+import tech.pegasys.web3signer.core.multikey.metadata.SigningMetadata;
+import tech.pegasys.web3signer.core.multikey.metadata.parser.YamlSignerParser;
 import tech.pegasys.web3signer.core.signing.ArtifactSignerProvider;
+import tech.pegasys.web3signer.core.signing.KeyType;
 import tech.pegasys.web3signer.core.util.IdentifierUtils;
 import tech.pegasys.web3signer.slashingprotection.SlashingProtection;
 
@@ -25,10 +32,15 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -72,30 +84,49 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
       return;
     }
 
-    final List<String> pubkeysToDelete = new ArrayList<>();
-    pubkeysToDelete.addAll(
-        parsedBody.getPubkeys().stream()
+    final List<String> pubkeysToDelete = parsedBody.getPubkeys().stream()
+        .map(IdentifierUtils::normaliseIdentifier)
+        .collect(Collectors.toList());
+
+    // load active keys
+    final Set<String> activePubkeys =
+        signerProvider.availableIdentifiers().stream()
             .map(IdentifierUtils::normaliseIdentifier)
-            .collect(Collectors.toList()));
+            .collect(Collectors.toSet());
 
     final List<DeleteKeystoreResult> results = new ArrayList<>();
-    final List<String> deletedKeys = new ArrayList<>();
+    final List<String> keysToExport = new ArrayList<>();
     for (String pubkey : pubkeysToDelete) {
       try {
-        // Remove key from memory
-        // TODO check that other validators are not using this key as well?
-        signerProvider.removeSigner(pubkey).get();
-        // Delete corresponding keystore file
-        // TODO inspect inside the file and match the pubkey
-        final boolean deleted = Files.deleteIfExists(keystorePath.resolve(pubkey + ".yaml"));
-        if (deleted) {
-          deletedKeys.add(pubkey);
-          results.add(
-              new DeleteKeystoreResult(DeleteKeystoreStatus.DELETED, ""));
-        } else {
-          results.add(
-              new DeleteKeystoreResult(DeleteKeystoreStatus.NOT_FOUND, ""));
+        final boolean isActive = activePubkeys.contains(pubkey);
+        final Optional<Path> keystoreConfigFile = findKeystoreConfigFile(pubkey);
+
+        // check that key is active
+        if (!isActive) {
+          // if not active, check if we ever had this key registered in the slashing DB
+          boolean wasRegistered = false;
+          if (slashingProtection.isPresent()) {
+            wasRegistered = slashingProtection.get().isRegisteredValidator(Bytes.fromHexString(pubkey));
+          }
+          // if it was registered previously, return not_active and add to list of keys to export, otherwise not_found
+          if (wasRegistered) {
+            keysToExport.add(pubkey);
+            results.add(new DeleteKeystoreResult(DeleteKeystoreStatus.NOT_ACTIVE, ""));
+          } else {
+            results.add(new DeleteKeystoreResult(DeleteKeystoreStatus.NOT_FOUND, ""));
+          }
+          continue;
         }
+        // Remove active key from memory first, will stop any further signing with this key
+        // TODO check DB lock for this key in case it's currently signing a request?
+        signerProvider.removeSigner(pubkey).get();
+        // Then, delete the corresponding keystore file
+        if (keystoreConfigFile.isPresent()) {
+          Files.delete(keystoreConfigFile.get());
+        }
+        // finally, add result response
+        keysToExport.add(pubkey);
+        results.add(new DeleteKeystoreResult(DeleteKeystoreStatus.DELETED, ""));
       } catch (Exception e) {
         results.add(
             new DeleteKeystoreResult(
@@ -107,7 +138,7 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
     if (slashingProtection.isPresent()) {
       try {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        slashingProtection.get().exportWithFilter(outputStream, deletedKeys);
+        slashingProtection.get().exportWithFilter(outputStream, keysToExport);
         slashingProtectionExport = outputStream.toString(StandardCharsets.UTF_8);
       } catch (Exception e) {
         LOG.debug("Failed to export slashing data", e);
@@ -126,6 +157,36 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
                   new DeleteKeystoresResponse(results, slashingProtectionExport)));
     } catch (JsonProcessingException e) {
       context.fail(SERVER_ERROR, e);
+    }
+  }
+
+  private Optional<Path> findKeystoreConfigFile(final String pubkey) throws IOException {
+    // find keystore files and map them to their pubkeys
+    try (final Stream<Path> fileStream = Files.list(keystorePath)) {
+      Map<String, Path> map = fileStream
+          .filter(path -> FilenameUtils.getExtension(path.toString()).toLowerCase().endsWith("yaml"))
+          .map(path -> {
+            try {
+              final String fileContent = Files.readString(path, StandardCharsets.UTF_8);
+              final SigningMetadata metaDataInfo =
+                  YamlSignerParser.OBJECT_MAPPER.readValue(fileContent, SigningMetadata.class);
+              if (metaDataInfo.getKeyType() == KeyType.BLS && metaDataInfo instanceof FileKeyStoreMetadata) {
+                final Path keystoreFile = ((FileKeyStoreMetadata) metaDataInfo).getKeystoreFile();
+                final KeyStoreData keyStoreData = KeyStoreLoader.loadFromFile(keystoreFile);
+                final String decodedPubKey = IdentifierUtils.normaliseIdentifier(
+                    keyStoreData.getPubkey().appendHexTo(new StringBuilder()).toString());
+                return new AbstractMap.SimpleEntry<>(decodedPubKey, path);
+              } else {
+                return null;
+              }
+            } catch (final IOException e) {
+              LOG.error("Error reading config file: {}", path, e);
+              return null;
+            }
+          })
+          .filter(Objects::nonNull)
+          .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+      return Optional.ofNullable(map.get(pubkey));
     }
   }
 
