@@ -104,10 +104,7 @@ public class DeleteKeystoresHandler implements Handler<RoutingContext> {
         // check that key is active
         if (!isActive) {
           // if not active, check if we ever had this key registered in the slashing DB
-          boolean wasRegistered = false;
-          if (slashingProtection.isPresent()) {
-            wasRegistered = slashingProtection.get().isRegisteredValidator(Bytes.fromHexString(pubkey));
-          }
+          final boolean wasRegistered = slashingProtection.map(protection -> protection.isRegisteredValidator(Bytes.fromHexString(pubkey))).orElse(false);
           // if it was registered previously, return not_active and add to list of keys to export, otherwise not_found
           if (wasRegistered) {
             keysToExport.add(pubkey);

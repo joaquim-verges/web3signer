@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.hasItem;
 
+import org.hamcrest.Matchers;
 import tech.pegasys.web3signer.core.service.http.handlers.keymanager.delete.DeleteKeystoresRequestBody;
 
 import java.io.IOException;
@@ -30,7 +31,7 @@ import org.junit.jupiter.api.Test;
 
 public class DeleteKeystoresAcceptanceTest extends KeyManagerTestBase {
 
-  private String singleEntrySlashingData = "{\"metadata\" : {\n" +
+  private final String singleEntrySlashingData = "{\"metadata\" : {\n" +
       "  \"interchange_format_version\" : \"5\",\n" +
       "  \"genesis_validators_root\" : \"0x04700007fabc8282644aed6d1c7c9e21d38a03a0c4ba193f3afe428824b3a673\"\n" +
       "},\n" +
@@ -48,7 +49,7 @@ public class DeleteKeystoresAcceptanceTest extends KeyManagerTestBase {
       "} ]\n" +
       "}";
 
-  private String emptySlashingData = "{\"metadata\" : {\n" +
+  private final String emptySlashingData = "{\"metadata\" : {\n" +
       "  \"interchange_format_version\" : \"5\",\n" +
       "  \"genesis_validators_root\" : \"0x04700007fabc8282644aed6d1c7c9e21d38a03a0c4ba193f3afe428824b3a673\"\n" +
       "},\n" +
@@ -66,8 +67,7 @@ public class DeleteKeystoresAcceptanceTest extends KeyManagerTestBase {
   public void deletingNonExistingKeyReturnNotFound() throws URISyntaxException {
     createBlsKey("eth2/bls_keystore_2.json", "otherpassword");
     setupSignerWithKeyManagerApi(true);
-    final Response response = callDeleteKeystores(composeRequestBody());
-    response
+    callDeleteKeystores(composeRequestBody())
         .then()
         .contentType(ContentType.JSON)
         .assertThat()
@@ -81,8 +81,7 @@ public class DeleteKeystoresAcceptanceTest extends KeyManagerTestBase {
   public void deletingExistingKeyReturnDeleted() throws URISyntaxException {
     createBlsKey("eth2/bls_keystore.json", "somepassword");
     setupSignerWithKeyManagerApi(true);
-    final Response response = callDeleteKeystores(composeRequestBody());
-    response
+    callDeleteKeystores(composeRequestBody())
         .then()
         .contentType(ContentType.JSON)
         .assertThat()
@@ -96,8 +95,7 @@ public class DeleteKeystoresAcceptanceTest extends KeyManagerTestBase {
   public void deletingExistingTwiceReturnsNotActive() throws URISyntaxException {
     createBlsKey("eth2/bls_keystore.json", "somepassword");
     setupSignerWithKeyManagerApi(true);
-    final Response response = callDeleteKeystores(composeRequestBody());
-    response
+    callDeleteKeystores(composeRequestBody())
         .then()
         .contentType(ContentType.JSON)
         .assertThat()
@@ -107,8 +105,7 @@ public class DeleteKeystoresAcceptanceTest extends KeyManagerTestBase {
         .body("slashing_protection", is(singleEntrySlashingData));
 
     // call API again with same key should return not_active with the same exported slashing protection data
-    final Response response2 = callDeleteKeystores(composeRequestBody());
-    response2
+    callDeleteKeystores(composeRequestBody())
         .then()
         .contentType(ContentType.JSON)
         .assertThat()
@@ -116,6 +113,40 @@ public class DeleteKeystoresAcceptanceTest extends KeyManagerTestBase {
         .body("data[0].status", is("not_active"))
         .and()
         .body("slashing_protection", is(singleEntrySlashingData));
+  }
+
+  @Test
+  public void deletingRemovesSignerFromActiveSigners() throws URISyntaxException {
+    final String firstPubkey = createBlsKey("eth2/bls_keystore.json", "somepassword");
+    final String secondPubKey = createBlsKey("eth2/bls_keystore_2.json", "otherpassword");
+    setupSignerWithKeyManagerApi(true);
+
+    callListKeys()
+        .then()
+        .statusCode(200)
+        .contentType(ContentType.JSON)
+        .body("data.size()", is(2))
+        .and()
+        .body("data[0].validating_pubkey", is(firstPubkey))
+        .and()
+        .body("data[1].validating_pubkey", is(secondPubKey));
+
+    callDeleteKeystores(composeRequestBody())
+        .then()
+        .contentType(ContentType.JSON)
+        .assertThat()
+        .statusCode(200)
+        .body("data[0].status", is("deleted"))
+        .and()
+        .body("slashing_protection", is(singleEntrySlashingData));
+
+    callListKeys()
+        .then()
+        .statusCode(200)
+        .contentType(ContentType.JSON)
+        .body("data.size()", is(1))
+        .and()
+        .body("data[0].validating_pubkey", is(secondPubKey));
   }
 
   @Test

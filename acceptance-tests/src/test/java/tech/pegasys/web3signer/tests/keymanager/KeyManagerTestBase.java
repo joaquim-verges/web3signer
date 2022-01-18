@@ -109,12 +109,12 @@ public class KeyManagerTestBase extends AcceptanceTestBase {
         .delete(KEYSTORE_ENDPOINT);
   }
 
-  protected void createBlsKey(String keystorePath, String password) throws URISyntaxException {
+  protected String createBlsKey(String keystorePath, String password) throws URISyntaxException {
     final Path keystoreFile =
         Path.of(new File(Resources.getResource(keystorePath).toURI()).getAbsolutePath());
     final KeyStoreData keyStoreData = KeyStoreLoader.loadFromFile(keystoreFile);
     final Bytes privateKey = KeyStore.decrypt(password, keyStoreData);
-    createKeystoreYamlFile(privateKey.toHexString());
+    return createKeystoreYamlFile(privateKey.toHexString());
   }
 
   protected void validateApiResponse(
