@@ -180,6 +180,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
         results.add(
             new ImportKeystoreResult(
                 ImportKeystoreStatus.ERROR, "Error importing keystore: " + e.getMessage()));
+        LOG.error("Error decrypting keystore", e);
       }
     }
 
@@ -192,6 +193,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
     } catch (Exception e) {
       removeSignersAndCleanupImportedKeystoreFiles(nonLoadedPubkeys);
       context.fail(SERVER_ERROR, e);
+      LOG.error("Error serializing response", e);
     }
   }
 
@@ -211,7 +213,7 @@ public class ImportKeystoresHandler implements Handler<RoutingContext> {
   }
 
   private void handleInvalidRequest(final RoutingContext routingContext, final Exception e) {
-    LOG.info("Invalid import keystores request - " + routingContext.getBodyAsString(), e);
+    LOG.error("Invalid import keystores request - " + routingContext.getBodyAsString(), e);
     routingContext.fail(BAD_REQUEST, e);
   }
 
